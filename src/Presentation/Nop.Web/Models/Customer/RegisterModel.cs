@@ -4,10 +4,11 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Web.Framework.Mvc.ModelBinding;
 using Nop.Web.Framework.Models;
+using Nop.Core;
 
 namespace Nop.Web.Models.Customer
 {
-    public partial class RegisterModel : BaseNopModel
+    public partial record RegisterModel : BaseNopModel
     {
         public RegisterModel()
         {
@@ -34,12 +35,10 @@ namespace Nop.Web.Models.Customer
         public bool CheckUsernameAvailabilityEnabled { get; set; }
 
         [DataType(DataType.Password)]
-        [NoTrim]
         [NopResourceDisplayName("Account.Fields.Password")]
         public string Password { get; set; }
 
         [DataType(DataType.Password)]
-        [NoTrim]
         [NopResourceDisplayName("Account.Fields.ConfirmPassword")]
         public string ConfirmPassword { get; set; }
 
@@ -67,16 +66,7 @@ namespace Nop.Web.Models.Customer
         public bool DateOfBirthRequired { get; set; }
         public DateTime? ParseDateOfBirth()
         {
-            if (!DateOfBirthYear.HasValue || !DateOfBirthMonth.HasValue || !DateOfBirthDay.HasValue)
-                return null;
-
-            DateTime? dateOfBirth = null;
-            try
-            {
-                dateOfBirth = new DateTime(DateOfBirthYear.Value, DateOfBirthMonth.Value, DateOfBirthDay.Value);
-            }
-            catch { }
-            return dateOfBirth;
+            return CommonHelper.ParseDate(DateOfBirthYear, DateOfBirthMonth, DateOfBirthDay);
         }
 
         public bool CompanyEnabled { get; set; }

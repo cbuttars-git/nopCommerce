@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Nop.Core;
 using Nop.Core.Domain;
 using Nop.Core.Domain.Customers;
@@ -55,52 +56,62 @@ namespace Nop.Web.Framework.Themes
         /// <summary>
         /// Get or set current theme system name
         /// </summary>
-        public string WorkingThemeName
+        /// <returns>A task that represents the asynchronous operation</returns>
+        public virtual async Task<string> GetWorkingThemeNameAsync()
         {
-            get
+            if (!string.IsNullOrEmpty(_cachedThemeName))
+                return _cachedThemeName;
+
+            var themeName = string.Empty;
+
+            //whether customers are allowed to select a theme
+            var customer = await _workContext.GetCurrentCustomerAsync();
+            if (_storeInformationSettings.AllowCustomerToSelectTheme &&
+                customer != null)
             {
-                if (!string.IsNullOrEmpty(_cachedThemeName))
-                    return _cachedThemeName;
-
-                var themeName = string.Empty;
-
-                //whether customers are allowed to select a theme
-                if (_storeInformationSettings.AllowCustomerToSelectTheme && _workContext.CurrentCustomer != null)
-                {
-                    themeName = _genericAttributeService.GetAttribute<string>(_workContext.CurrentCustomer,
-                        NopCustomerDefaults.WorkingThemeNameAttribute, _storeContext.CurrentStore.Id);
-                }
-
-                //if not, try to get default store theme
-                if (string.IsNullOrEmpty(themeName))
-                    themeName = _storeInformationSettings.DefaultStoreTheme;
-
-                //ensure that this theme exists
-                if (!_themeProvider.ThemeExists(themeName))
-                {
-                    //if it does not exist, try to get the first one
-                    themeName = _themeProvider.GetThemes().FirstOrDefault()?.SystemName
-                        ?? throw new Exception("No theme could be loaded");
-                }
-
-                //cache theme system name
-                _cachedThemeName = themeName;
-
-                return themeName;
+                var store = await _storeContext.GetCurrentStoreAsync();
+                themeName = await _genericAttributeService.GetAttributeAsync<string>(customer,
+                    NopCustomerDefaults.WorkingThemeNameAttribute, store.Id);
             }
-            set
+
+            //if not, try to get default store theme
+            if (string.IsNullOrEmpty(themeName))
+                themeName = _storeInformationSettings.DefaultStoreTheme;
+
+            //ensure that this theme exists
+            if (!await _themeProvider.ThemeExistsAsync(themeName))
             {
-                //whether customers are allowed to select a theme
-                if (!_storeInformationSettings.AllowCustomerToSelectTheme || _workContext.CurrentCustomer == null)
-                    return;
-
-                //save selected by customer theme system name
-                _genericAttributeService.SaveAttribute(_workContext.CurrentCustomer,
-                    NopCustomerDefaults.WorkingThemeNameAttribute, value, _storeContext.CurrentStore.Id);
-
-                //clear cache
-                _cachedThemeName = null;
+                //if it does not exist, try to get the first one
+                themeName = (await _themeProvider.GetThemesAsync()).FirstOrDefault()?.SystemName
+                            ?? throw new Exception("No theme could be loaded");
             }
+
+            //cache theme system name
+            _cachedThemeName = themeName;
+
+            return themeName;
+        }
+
+        /// <summary>
+        /// Set current theme system name
+        /// </summary>
+        /// <returns>A task that represents the asynchronous operation</returns>
+        public virtual async Task SetWorkingThemeNameAsync(string workingThemeName)
+        {
+            //whether customers are allowed to select a theme
+            var customer = await _workContext.GetCurrentCustomerAsync();
+            if (!_storeInformationSettings.AllowCustomerToSelectTheme ||
+                customer == null)
+                return;
+
+            //save selected by customer theme system name
+            var store = await _storeContext.GetCurrentStoreAsync();
+            await _genericAttributeService.SaveAttributeAsync(customer,
+                NopCustomerDefaults.WorkingThemeNameAttribute, workingThemeName,
+                store.Id);
+
+            //clear cache
+            _cachedThemeName = null;
         }
 
         #endregion

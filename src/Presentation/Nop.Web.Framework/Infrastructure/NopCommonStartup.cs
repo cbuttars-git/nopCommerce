@@ -19,14 +19,11 @@ namespace Nop.Web.Framework.Infrastructure
         /// <param name="configuration">Configuration of the application</param>
         public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
         {
-            //compression
-            services.AddResponseCompression();
-
             //add options feature
             services.AddOptions();
-            
-            //add distributed memory cache
-            services.AddDistributedMemoryCache();
+
+            //add distributed cache
+            services.AddDistributedCache();
 
             //add HTTP sesion state feature
             services.AddHttpSession();
@@ -37,9 +34,6 @@ namespace Nop.Web.Framework.Infrastructure
             //add anti-forgery
             services.AddAntiForgery();
 
-            //add localization
-            services.AddLocalization();
-
             //add theme support
             services.AddThemes();
 
@@ -47,7 +41,7 @@ namespace Nop.Web.Framework.Infrastructure
             services.AddRouting(options =>
             {
                 //add constraint key for language
-                options.ConstraintMap["lang"] = typeof(LanguageParameterTransformer);
+                options.ConstraintMap[NopPathRouteDefaults.LanguageParameterTransformer] = typeof(LanguageParameterTransformer);
             });
         }
 
@@ -57,12 +51,6 @@ namespace Nop.Web.Framework.Infrastructure
         /// <param name="application">Builder for configuring an application's request pipeline</param>
         public void Configure(IApplicationBuilder application)
         {
-            //use response compression
-            application.UseNopResponseCompression();
-
-            //use static files feature
-            application.UseNopStaticFiles();
-
             //check whether requested page is keep alive page
             application.UseKeepAlive();
 
@@ -74,9 +62,6 @@ namespace Nop.Web.Framework.Infrastructure
 
             //use request localization
             application.UseNopRequestLocalization();
-
-            //set request culture
-            application.UseCulture();
         }
 
         /// <summary>

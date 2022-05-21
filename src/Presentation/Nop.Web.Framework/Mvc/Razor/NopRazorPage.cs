@@ -1,9 +1,6 @@
-﻿using Nop.Core;
-using Nop.Core.Infrastructure;
+﻿using Nop.Core.Infrastructure;
 using Nop.Services.Localization;
-using Nop.Services.Themes;
 using Nop.Web.Framework.Localization;
-using Nop.Web.Framework.Themes;
 
 namespace Nop.Web.Framework.Mvc.Razor
 {
@@ -30,7 +27,7 @@ namespace Nop.Web.Framework.Mvc.Razor
                 {
                     _localizer = (format, args) =>
                     {
-                        var resFormat = _localizationService.GetResource(format);
+                        var resFormat = _localizationService.GetResourceAsync(format).Result;
                         if (string.IsNullOrEmpty(resFormat))
                         {
                             return new LocalizedString(format);
@@ -42,24 +39,6 @@ namespace Nop.Web.Framework.Mvc.Razor
                 }
                 return _localizer;
             }
-        }
-
-        /// <summary>
-        /// Return a value indicating whether the working language and theme support RTL (right-to-left)
-        /// </summary>
-        /// <returns></returns>
-        public bool ShouldUseRtlTheme()
-        {
-            var workContext = EngineContext.Current.Resolve<IWorkContext>();
-            var supportRtl = workContext.WorkingLanguage.Rtl;
-            if (supportRtl)
-            {
-                //ensure that the active theme also supports it
-                var themeProvider = EngineContext.Current.Resolve<IThemeProvider>();
-                var themeContext = EngineContext.Current.Resolve<IThemeContext>();
-                supportRtl = themeProvider.GetThemeBySystemName(themeContext.WorkingThemeName)?.SupportRtl ?? false;
-            }
-            return supportRtl;
         }
     }
 

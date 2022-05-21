@@ -3,9 +3,9 @@
     Layout = "_ColumnsOne";
 
     //title
-    Html.AddTitleParts(T("PageTitle.Sitemap").Text);
+    NopHtml.AddTitleParts(T("PageTitle.Sitemap").Text);
     //page class
-    Html.AppendPageCssClassParts("html-sitemap-page");
+    NopHtml.AppendPageCssClassParts("html-sitemap-page");
 }
 <div class="page sitemap-page">
     <div class="page-title">
@@ -15,7 +15,7 @@
         <div class="description">
             @T("Sitemap.Description")
         </div>
-        @await Component.InvokeAsync("Widget", new { widgetZone = PublicWidgetZones.SitemapBefore })
+        @await Component.InvokeAsync("Widget", new { widgetZone = PublicWidgetZones.SitemapBefore, additionalData = Model })
         @foreach (var itemGroup in Model.Items.GroupBy(itemGroup => itemGroup.GroupTitle))
         {
             <div class="entity">
@@ -34,13 +34,13 @@
         }
         @{
             var pager = Html.Pager(Model.PageModel).QueryParam("pagenumber");
-            if (!pager.IsEmpty())
+            if (!(await pager.IsEmpty()))
             {
                 <div class="pager">
                     @pager
                 </div>
             }
         }
-        @await Component.InvokeAsync("Widget", new { widgetZone = PublicWidgetZones.SitemapAfter })
+        @await Component.InvokeAsync("Widget", new { widgetZone = PublicWidgetZones.SitemapAfter, additionalData = Model })
     </div>
 </div>

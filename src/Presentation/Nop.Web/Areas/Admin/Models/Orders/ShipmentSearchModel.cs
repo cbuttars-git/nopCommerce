@@ -10,7 +10,7 @@ namespace Nop.Web.Areas.Admin.Models.Orders
     /// <summary>
     /// Represents a shipment search model
     /// </summary>
-    public partial class ShipmentSearchModel : BaseSearchModel
+    public partial record ShipmentSearchModel : BaseSearchModel
     {
         #region Ctor
 
@@ -55,6 +55,9 @@ namespace Nop.Web.Areas.Admin.Models.Orders
 
         [NopResourceDisplayName("Admin.Orders.Shipments.List.LoadNotShipped")]
         public bool LoadNotShipped { get; set; }
+
+        [NopResourceDisplayName("Admin.Orders.Shipments.List.LoadNotReadyForPickup")]
+        public bool LoadNotReadyForPickup { get; set; }
 
         [NopResourceDisplayName("Admin.Orders.Shipments.List.LoadNotDelivered")]
         public bool LoadNotDelivered { get; set; }

@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using System.Text.RegularExpressions;
+using FluentValidation;
 using FluentValidation.Validators;
 using Nop.Core.Domain.Customers;
 
@@ -8,15 +9,16 @@ namespace Nop.Web.Framework.Validators
     /// <summary>
     /// Phohe number validator
     /// </summary>
-    public class PhoneNumberPropertyValidator : PropertyValidator
+    public class PhoneNumberPropertyValidator<T, TProperty> : PropertyValidator<T, TProperty>
     {
         private readonly CustomerSettings _customerSettings;
+
+        public override string Name => "PhoneNumberPropertyValidator";
 
         /// <summary>
         /// Ctor
         /// </summary>
         public PhoneNumberPropertyValidator(CustomerSettings customerSettings)
-            : base("Phone number is not valid")
         {
             _customerSettings = customerSettings;
         }
@@ -26,9 +28,9 @@ namespace Nop.Web.Framework.Validators
         /// </summary>
         /// <param name="context">Validation context</param>
         /// <returns>Result</returns>
-        protected override bool IsValid(PropertyValidatorContext context)
+        public override bool IsValid(ValidationContext<T> context, TProperty value)
         {
-            return IsValid(context.PropertyValue as string, _customerSettings);
+            return IsValid(value as string, _customerSettings);
         }
 
         /// <summary>
@@ -49,5 +51,7 @@ namespace Nop.Web.Framework.Validators
                 ? Regex.IsMatch(phoneNumber, customerSettings.PhoneNumberValidationRule, RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)
                 : phoneNumber.All(l => customerSettings.PhoneNumberValidationRule.Contains(l));
         }
+
+        protected override string GetDefaultMessageTemplate(string errorCode) => "Phone number is not valid";
     }
 }

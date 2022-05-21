@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Web.Framework.Models;
 using Nop.Web.Framework.Mvc.ModelBinding;
@@ -8,7 +9,7 @@ namespace Nop.Web.Areas.Admin.Models.Customers
     /// <summary>
     /// Represents a customer search model
     /// </summary>
-    public partial class CustomerSearchModel : BaseSearchModel, IAclSupportedModel
+    public partial record CustomerSearchModel : BaseSearchModel, IAclSupportedModel
     {
         #region Ctor
 
@@ -27,6 +28,7 @@ namespace Nop.Web.Areas.Admin.Models.Customers
 
         public IList<SelectListItem> AvailableCustomerRoles { get; set; }
 
+        [DataType(DataType.EmailAddress)]
         [NopResourceDisplayName("Admin.Customers.Customers.List.SearchEmail")]
         public string SearchEmail { get; set; }
 
@@ -56,6 +58,7 @@ namespace Nop.Web.Areas.Admin.Models.Customers
 
         public bool CompanyEnabled { get; set; }
 
+        [DataType(DataType.PhoneNumber)]
         [NopResourceDisplayName("Admin.Customers.Customers.List.SearchPhone")]
         public string SearchPhone { get; set; }
 

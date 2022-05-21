@@ -4,12 +4,13 @@ using Nop.Web.Framework.Models;
 
 namespace Nop.Web.Models.ShoppingCart
 {
-    public partial class WishlistEmailAFriendModel : BaseNopModel
+    public partial record WishlistEmailAFriendModel : BaseNopModel
     {
         [DataType(DataType.EmailAddress)]
         [NopResourceDisplayName("Wishlist.EmailAFriend.FriendEmail")]
         public string FriendEmail { get; set; }
-        
+
+        [DataType(DataType.EmailAddress)]
         [NopResourceDisplayName("Wishlist.EmailAFriend.YourEmailAddress")]
         public string YourEmailAddress { get; set; }
         

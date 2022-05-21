@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Net;
 using System.Text;
+using System.Threading.Tasks;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Orders;
-using Nop.Core.Html;
 using Nop.Services.Directory;
+using Nop.Services.Html;
 using Nop.Services.Localization;
 using Nop.Services.Media;
 using Nop.Services.Tax;
@@ -22,6 +23,7 @@ namespace Nop.Services.Catalog
 
         private readonly ICurrencyService _currencyService;
         private readonly IDownloadService _downloadService;
+        private readonly IHtmlFormatter _htmlFormatter;
         private readonly ILocalizationService _localizationService;
         private readonly IPriceCalculationService _priceCalculationService;
         private readonly IPriceFormatter _priceFormatter;
@@ -38,6 +40,7 @@ namespace Nop.Services.Catalog
 
         public ProductAttributeFormatter(ICurrencyService currencyService,
             IDownloadService downloadService,
+            IHtmlFormatter htmlFormatter,
             ILocalizationService localizationService,
             IPriceCalculationService priceCalculationService,
             IPriceFormatter priceFormatter,
@@ -50,6 +53,7 @@ namespace Nop.Services.Catalog
         {
             _currencyService = currencyService;
             _downloadService = downloadService;
+            _htmlFormatter = htmlFormatter;
             _localizationService = localizationService;
             _priceCalculationService = priceCalculationService;
             _priceFormatter = priceFormatter;
@@ -70,11 +74,14 @@ namespace Nop.Services.Catalog
         /// </summary>
         /// <param name="product">Product</param>
         /// <param name="attributesXml">Attributes in XML format</param>
-        /// <returns>Attributes</returns>
-        public virtual string FormatAttributes(Product product, string attributesXml)
+        /// <returns>
+        /// A task that represents the asynchronous operation
+        /// The task result contains the attributes
+        /// </returns>
+        public virtual async Task<string> FormatAttributesAsync(Product product, string attributesXml)
         {
-            var customer = _workContext.CurrentCustomer;
-            return FormatAttributes(product, attributesXml, customer);
+            var customer = await _workContext.GetCurrentCustomerAsync();
+            return await FormatAttributesAsync(product, attributesXml, customer);
         }
 
         /// <summary>
@@ -89,21 +96,24 @@ namespace Nop.Services.Catalog
         /// <param name="renderProductAttributes">A value indicating whether to render product attributes</param>
         /// <param name="renderGiftCardAttributes">A value indicating whether to render gift card attributes</param>
         /// <param name="allowHyperlinks">A value indicating whether to HTML hyperink tags could be rendered (if required)</param>
-        /// <returns>Attributes</returns>
-        public virtual string FormatAttributes(Product product, string attributesXml,
+        /// <returns>
+        /// A task that represents the asynchronous operation
+        /// The task result contains the attributes
+        /// </returns>
+        public virtual async Task<string> FormatAttributesAsync(Product product, string attributesXml,
             Customer customer, string separator = "<br />", bool htmlEncode = true, bool renderPrices = true,
             bool renderProductAttributes = true, bool renderGiftCardAttributes = true,
             bool allowHyperlinks = true)
         {
             var result = new StringBuilder();
-
+            var currentLanguage = await _workContext.GetWorkingLanguageAsync();
             //attributes
             if (renderProductAttributes)
             {
-                foreach (var attribute in _productAttributeParser.ParseProductAttributeMappings(attributesXml))
+                foreach (var attribute in await _productAttributeParser.ParseProductAttributeMappingsAsync(attributesXml))
                 {
-                    var productAttrubute = _productAttributeService.GetProductAttributeById(attribute.ProductAttributeId);
-                    var attributeName = _localizationService.GetLocalized(productAttrubute, a => a.Name, _workContext.WorkingLanguage.Id);
+                    var productAttribute = await _productAttributeService.GetProductAttributeByIdAsync(attribute.ProductAttributeId);
+                    var attributeName = await _localizationService.GetLocalizedAsync(productAttribute, a => a.Name, currentLanguage.Id);
 
                     //attributes without values
                     if (!attribute.ShouldHaveValues())
@@ -118,13 +128,13 @@ namespace Nop.Services.Catalog
                                     attributeName = WebUtility.HtmlEncode(attributeName);
 
                                 //we never encode multiline textbox input
-                                formattedAttribute = $"{attributeName}: {HtmlHelper.FormatText(value, false, true, false, false, false, false)}";
+                                formattedAttribute = $"{attributeName}: {_htmlFormatter.FormatText(value, false, true, false, false, false, false)}";
                             }
                             else if (attribute.AttributeControlType == AttributeControlType.FileUpload)
                             {
                                 //file upload
-                                Guid.TryParse(value, out var downloadGuid);
-                                var download = _downloadService.GetDownloadByGuid(downloadGuid);
+                                _ = Guid.TryParse(value, out var downloadGuid);
+                                var download = await _downloadService.GetDownloadByGuidAsync(downloadGuid);
                                 if (download != null)
                                 {
                                     var fileName = $"{download.Filename ?? download.DownloadGuid.ToString()}{download.Extension}";
@@ -133,7 +143,7 @@ namespace Nop.Services.Catalog
                                     if (htmlEncode)
                                         fileName = WebUtility.HtmlEncode(fileName);
 
-                                    var attributeText = allowHyperlinks ? $"<a href=\"{_webHelper.GetStoreLocation(false)}download/getfileupload/?downloadId={download.DownloadGuid}\" class=\"fileuploadattribute\">{fileName}</a>"
+                                    var attributeText = allowHyperlinks ? $"<a href=\"{_webHelper.GetStoreLocation()}download/getfileupload/?downloadId={download.DownloadGuid}\" class=\"fileuploadattribute\">{fileName}</a>"
                                         : fileName;
 
                                     //encode (if required)
@@ -164,9 +174,9 @@ namespace Nop.Services.Catalog
                     //product attribute values
                     else
                     {
-                        foreach (var attributeValue in _productAttributeParser.ParseProductAttributeValues(attributesXml, attribute.Id))
+                        foreach (var attributeValue in await _productAttributeParser.ParseProductAttributeValuesAsync(attributesXml, attribute.Id))
                         {
-                            var formattedAttribute = $"{attributeName}: {_localizationService.GetLocalized(attributeValue, a => a.Name, _workContext.WorkingLanguage.Id)}";
+                            var formattedAttribute = $"{attributeName}: {await _localizationService.GetLocalizedAsync(attributeValue, a => a.Name, currentLanguage.Id)}";
 
                             if (renderPrices)
                             {
@@ -175,33 +185,33 @@ namespace Nop.Services.Catalog
                                     if (attributeValue.PriceAdjustment > decimal.Zero)
                                     {
                                         formattedAttribute += string.Format(
-                                                _localizationService.GetResource("FormattedAttributes.PriceAdjustment"),
+                                                await _localizationService.GetResourceAsync("FormattedAttributes.PriceAdjustment"),
                                                 "+", attributeValue.PriceAdjustment.ToString("G29"), "%");
                                     }
                                     else if (attributeValue.PriceAdjustment < decimal.Zero)
                                     {
                                         formattedAttribute += string.Format(
-                                                _localizationService.GetResource("FormattedAttributes.PriceAdjustment"),
+                                                await _localizationService.GetResourceAsync("FormattedAttributes.PriceAdjustment"),
                                                 string.Empty, attributeValue.PriceAdjustment.ToString("G29"), "%");
                                     }
                                 }
                                 else
                                 {
-                                    var attributeValuePriceAdjustment = _priceCalculationService.GetProductAttributeValuePriceAdjustment(product, attributeValue, customer);
-                                    var priceAdjustmentBase = _taxService.GetProductPrice(product, attributeValuePriceAdjustment, customer, out var _);
-                                    var priceAdjustment = _currencyService.ConvertFromPrimaryStoreCurrency(priceAdjustmentBase, _workContext.WorkingCurrency);
+                                    var attributeValuePriceAdjustment = await _priceCalculationService.GetProductAttributeValuePriceAdjustmentAsync(product, attributeValue, customer);
+                                    var (priceAdjustmentBase, _) = await _taxService.GetProductPriceAsync(product, attributeValuePriceAdjustment, customer);
+                                    var priceAdjustment = await _currencyService.ConvertFromPrimaryStoreCurrencyAsync(priceAdjustmentBase, await _workContext.GetWorkingCurrencyAsync());
 
                                     if (priceAdjustmentBase > decimal.Zero)
                                     {
                                         formattedAttribute += string.Format(
-                                                _localizationService.GetResource("FormattedAttributes.PriceAdjustment"),
-                                                "+", _priceFormatter.FormatPrice(priceAdjustment, false, false), string.Empty);
+                                                await _localizationService.GetResourceAsync("FormattedAttributes.PriceAdjustment"),
+                                                "+", await _priceFormatter.FormatPriceAsync(priceAdjustment, false, false), string.Empty);
                                     }
                                     else if (priceAdjustmentBase < decimal.Zero)
                                     {
                                         formattedAttribute += string.Format(
-                                                _localizationService.GetResource("FormattedAttributes.PriceAdjustment"),
-                                                "-", _priceFormatter.FormatPrice(-priceAdjustment, false, false), string.Empty);
+                                                await _localizationService.GetResourceAsync("FormattedAttributes.PriceAdjustment"),
+                                                "-", await _priceFormatter.FormatPriceAsync(-priceAdjustment, false, false), string.Empty);
                                     }
                                 }
                             }
@@ -211,7 +221,7 @@ namespace Nop.Services.Catalog
                             {
                                 //render only when more than 1
                                 if (attributeValue.Quantity > 1)
-                                    formattedAttribute += string.Format(_localizationService.GetResource("ProductAttributes.Quantity"), attributeValue.Quantity);
+                                    formattedAttribute += string.Format(await _localizationService.GetResourceAsync("ProductAttributes.Quantity"), attributeValue.Quantity);
                             }
 
                             //encode (if required)
@@ -240,12 +250,12 @@ namespace Nop.Services.Catalog
 
             //sender
             var giftCardFrom = product.GiftCardType == GiftCardType.Virtual ?
-                string.Format(_localizationService.GetResource("GiftCardAttribute.From.Virtual"), giftCardSenderName, giftCardSenderEmail) :
-                string.Format(_localizationService.GetResource("GiftCardAttribute.From.Physical"), giftCardSenderName);
+                string.Format(await _localizationService.GetResourceAsync("GiftCardAttribute.From.Virtual"), giftCardSenderName, giftCardSenderEmail) :
+                string.Format(await _localizationService.GetResourceAsync("GiftCardAttribute.From.Physical"), giftCardSenderName);
             //recipient
             var giftCardFor = product.GiftCardType == GiftCardType.Virtual ?
-                string.Format(_localizationService.GetResource("GiftCardAttribute.For.Virtual"), giftCardRecipientName, giftCardRecipientEmail) :
-                string.Format(_localizationService.GetResource("GiftCardAttribute.For.Physical"), giftCardRecipientName);
+                string.Format(await _localizationService.GetResourceAsync("GiftCardAttribute.For.Virtual"), giftCardRecipientName, giftCardRecipientEmail) :
+                string.Format(await _localizationService.GetResourceAsync("GiftCardAttribute.For.Physical"), giftCardRecipientName);
 
             //encode (if required)
             if (htmlEncode)

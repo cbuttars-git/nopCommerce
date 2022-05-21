@@ -1,6 +1,6 @@
 ﻿using FluentValidation;
 using Nop.Core.Domain.Gdpr;
-using Nop.Data;
+using Nop.Data.Mapping;
 using Nop.Services.Localization;
 using Nop.Web.Areas.Admin.Models.Settings;
 using Nop.Web.Framework.Validators;
@@ -9,15 +9,15 @@ namespace Nop.Web.Areas.Admin.Validators.Settings
 {
     public partial class GdprConsentValidator : BaseNopValidator<GdprConsentModel>
     {
-        public GdprConsentValidator(ILocalizationService localizationService, INopDataProvider dataProvider)
+        public GdprConsentValidator(ILocalizationService localizationService, IMappingEntityAccessor mappingEntityAccessor)
         {
-            RuleFor(x => x.Message).NotEmpty().WithMessage(localizationService.GetResource("Admin.Configuration.Settings.Gdpr.Consent.Message.Required"));
+            RuleFor(x => x.Message).NotEmpty().WithMessageAwait(localizationService.GetResourceAsync("Admin.Configuration.Settings.Gdpr.Consent.Message.Required"));
             RuleFor(x => x.RequiredMessage)
                 .NotEmpty()
-                .WithMessage(localizationService.GetResource("Admin.Configuration.Settings.Gdpr.Consent.RequiredMessage.Required"))
+                .WithMessageAwait(localizationService.GetResourceAsync("Admin.Configuration.Settings.Gdpr.Consent.RequiredMessage.Required"))
                 .When(x => x.IsRequired);
 
-            SetDatabaseValidationRules<GdprConsent>(dataProvider);
+            SetDatabaseValidationRules<GdprConsent>(mappingEntityAccessor);
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace Nop.Services.ExportImport.Help
@@ -18,10 +19,28 @@ namespace Nop.Services.ExportImport.Help
         /// <param name="propertyName">Property name</param>
         /// <param name="func">Feature property access</param>
         /// <param name="ignore">Specifies whether the property should be exported</param>
-        public PropertyByName(string propertyName, Func<T, object> func = null, bool ignore = false)
+        /// <returns>A task that represents the asynchronous operation</returns>
+        public PropertyByName(string propertyName, Func<T, Task<object>> func, bool ignore = false)
         {
             PropertyName = propertyName;
             GetProperty = func;
+            PropertyOrderPosition = 1;
+            Ignore = ignore;
+        }
+
+        /// <summary>
+        /// Ctor
+        /// </summary>
+        /// <param name="propertyName">Property name</param>
+        /// <param name="func">Feature property access</param>
+        /// <param name="ignore">Specifies whether the property should be exported</param>
+        public PropertyByName(string propertyName, Func<T, object> func = null, bool ignore = false)
+        {
+            PropertyName = propertyName;
+            
+            if(func != null)
+                GetProperty = obj => Task.FromResult(func(obj));
+
             PropertyOrderPosition = 1;
             Ignore = ignore;
         }
@@ -34,7 +53,8 @@ namespace Nop.Services.ExportImport.Help
         /// <summary>
         /// Feature property access
         /// </summary>
-        public Func<T, object> GetProperty { get; }
+        /// <returns>A task that represents the asynchronous operation</returns>
+        public Func<T, Task<object>> GetProperty { get; }
 
         /// <summary>
         /// Property name
@@ -59,6 +79,20 @@ namespace Nop.Services.ExportImport.Help
             {
                 if (PropertyValue == null || !int.TryParse(PropertyValue.ToString(), out var rez))
                     return default;
+                return rez;
+            }
+        }
+
+        /// <summary>
+        /// Converted property value to Int32
+        /// </summary>
+        public int? IntValueNullable
+        {
+            get
+            {
+                if (PropertyValue == null || !int.TryParse(PropertyValue.ToString(), out var rez))
+                    return null;
+
                 return rez;
             }
         }
@@ -123,7 +157,7 @@ namespace Nop.Services.ExportImport.Help
         /// <summary>
         /// Converted property value to DateTime?
         /// </summary>
-        public DateTime? DateTimeNullable => PropertyValue == null ? null : DateTime.FromOADate(DoubleValue) as DateTime?;
+        public DateTime? DateTimeNullable => !string.IsNullOrWhiteSpace(StringValue) ? null : PropertyValue as DateTime?;
 
         /// <summary>
         /// To string
@@ -173,10 +207,8 @@ namespace Nop.Services.ExportImport.Help
             if (string.IsNullOrEmpty(name?.ToString()))
                 return 0;
 
-            if (!int.TryParse(name.ToString(), out var id))
-            {
+            if (!int.TryParse(name.ToString(), out var id)) 
                 id = 0;
-            }
 
             return Convert.ToInt32(DropDownElements.FirstOrDefault(ev => ev.Text.Trim() == name.ToString().Trim())?.Value ?? id.ToString());
         }

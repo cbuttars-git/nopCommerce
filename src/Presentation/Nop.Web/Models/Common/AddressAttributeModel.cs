@@ -4,12 +4,14 @@ using Nop.Web.Framework.Models;
 
 namespace Nop.Web.Models.Common
 {
-    public partial class AddressAttributeModel : BaseNopEntityModel
+    public partial record AddressAttributeModel : BaseNopEntityModel
     {
         public AddressAttributeModel()
         {
             Values = new List<AddressAttributeValueModel>();
         }
+
+        public string ControlId { get; set; }
 
         public string Name { get; set; }
 
@@ -25,7 +27,7 @@ namespace Nop.Web.Models.Common
         public IList<AddressAttributeValueModel> Values { get; set; }
     }
 
-    public partial class AddressAttributeValueModel : BaseNopEntityModel
+    public partial record AddressAttributeValueModel : BaseNopEntityModel
     {
         public string Name { get; set; }
 

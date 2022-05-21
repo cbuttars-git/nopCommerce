@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Razor.TagHelpers;
@@ -9,69 +10,59 @@ using Nop.Web.Framework.Models;
 namespace Nop.Web.Framework.TagHelpers.Admin
 {
     /// <summary>
-    /// nop-editor tag helper
+    /// "nop-editor" tag helper
     /// </summary>
-    [HtmlTargetElement("nop-editor", Attributes = ForAttributeName, TagStructure = TagStructure.WithoutEndTag)]
+    [HtmlTargetElement("nop-editor", Attributes = FOR_ATTRIBUTE_NAME, TagStructure = TagStructure.WithoutEndTag)]
     public class NopEditorTagHelper : TagHelper
     {
-        private const string ForAttributeName = "asp-for";
-        private const string DisabledAttributeName = "asp-disabled";
-        private const string RequiredAttributeName = "asp-required";
-        private const string RenderFormControlClassAttributeName = "asp-render-form-control-class";
-        private const string TemplateAttributeName = "asp-template";
-        private const string PostfixAttributeName = "asp-postfix";
-        private const string ValueAttributeName = "asp-value";
-        private const string PlaceholderAttributeName = "placeholder";
+        #region Constants
 
-        private readonly IHtmlHelper _htmlHelper;
+        private const string FOR_ATTRIBUTE_NAME = "asp-for";
+        private const string CUSTOM_HTML_ATTRIBUTES = "html-attributes";
+        private const string REQUIRED_ATTRIBUTE_NAME = "asp-required";
+        private const string RENDER_FORM_CONTROL_CLASS_ATTRIBUTE_NAME = "asp-render-form-control-class";
+        private const string TEMPLATE_ATTRIBUTE_NAME = "asp-template";
+        private const string POSTFIX_ATTRIBUTE_NAME = "asp-postfix";
+
+        #endregion
+
+        #region Properties
 
         /// <summary>
         /// An expression to be evaluated against the current model
         /// </summary>
-        [HtmlAttributeName(ForAttributeName)]
+        [HtmlAttributeName(FOR_ATTRIBUTE_NAME)]
         public ModelExpression For { get; set; }
 
         /// <summary>
-        /// Indicates whether the field is disabled
+        /// Custom html attributes
         /// </summary>
-        [HtmlAttributeName(DisabledAttributeName)]
-        public string IsDisabled { set; get; }
+        [HtmlAttributeName(CUSTOM_HTML_ATTRIBUTES)]
+        public object CustomHtmlAttributes { set; get; }
 
         /// <summary>
         /// Indicates whether the field is required
         /// </summary>
-        [HtmlAttributeName(RequiredAttributeName)]
+        [HtmlAttributeName(REQUIRED_ATTRIBUTE_NAME)]
         public string IsRequired { set; get; }
-
-        /// <summary>
-        /// Placeholder for the field
-        /// </summary>
-        [HtmlAttributeName(PlaceholderAttributeName)]
-        public string Placeholder { set; get; }
 
         /// <summary>
         /// Indicates whether the "form-control" class shold be added to the input
         /// </summary>
-        [HtmlAttributeName(RenderFormControlClassAttributeName)]
+        [HtmlAttributeName(RENDER_FORM_CONTROL_CLASS_ATTRIBUTE_NAME)]
         public string RenderFormControlClass { set; get; }
 
         /// <summary>
         /// Editor template for the field
         /// </summary>
-        [HtmlAttributeName(TemplateAttributeName)]
+        [HtmlAttributeName(TEMPLATE_ATTRIBUTE_NAME)]
         public string Template { set; get; }
 
         /// <summary>
         /// Postfix
         /// </summary>
-        [HtmlAttributeName(PostfixAttributeName)]
+        [HtmlAttributeName(POSTFIX_ATTRIBUTE_NAME)]
         public string Postfix { set; get; }
-
-        /// <summary>
-        /// The value of the element
-        /// </summary>
-        [HtmlAttributeName(ValueAttributeName)]
-        public string Value { set; get; }
 
         /// <summary>
         /// ViewContext
@@ -80,31 +71,38 @@ namespace Nop.Web.Framework.TagHelpers.Admin
         [ViewContext]
         public ViewContext ViewContext { get; set; }
 
-        /// <summary>
-        /// Ctor
-        /// </summary>
-        /// <param name="htmlHelper">HTML helper</param>
+        #endregion
+
+        #region Fields
+
+        private readonly IHtmlHelper _htmlHelper;
+
+        #endregion
+
+        #region Ctor
+
         public NopEditorTagHelper(IHtmlHelper htmlHelper)
         {
             _htmlHelper = htmlHelper;
         }
 
+        #endregion
+
+        #region Methods
+
         /// <summary>
-        /// Process
+        /// Asynchronously executes the tag helper with the given context and output
         /// </summary>
-        /// <param name="context">Context</param>
-        /// <param name="output">Output</param>
-        public override void Process(TagHelperContext context, TagHelperOutput output)
+        /// <param name="context">Contains information associated with the current HTML tag</param>
+        /// <param name="output">A stateful HTML element used to generate an HTML tag</param>
+        /// <returns>A task that represents the asynchronous operation</returns>
+        public override Task ProcessAsync(TagHelperContext context, TagHelperOutput output)
         {
             if (context == null)
-            {
                 throw new ArgumentNullException(nameof(context));
-            }
 
             if (output == null)
-            {
                 throw new ArgumentNullException(nameof(output));
-            }
 
             //clear the output
             output.SuppressOutput();
@@ -112,24 +110,18 @@ namespace Nop.Web.Framework.TagHelpers.Admin
             //container for additional attributes
             var htmlAttributes = new Dictionary<string, object>();
 
-            //set placeholder if exists
-            if (!string.IsNullOrEmpty(Placeholder))
-                htmlAttributes.Add("placeholder", Placeholder);
-
-            //set value if exists
-            if (!string.IsNullOrEmpty(Value))
-                htmlAttributes.Add("value", Value);
-
-            //disabled attribute
-            bool.TryParse(IsDisabled, out var disabled);
-            if (disabled)
+            //set custom html attributes
+            var htmlAttributesDictionary = HtmlHelper.AnonymousObjectToHtmlAttributes(CustomHtmlAttributes);
+            if (htmlAttributesDictionary?.Count > 0)
             {
-                htmlAttributes.Add("disabled", "disabled");
+                foreach (var (key, value) in htmlAttributesDictionary)
+                {
+                    htmlAttributes.Add(key, value);
+                }
             }
 
             //required asterisk
-            bool.TryParse(IsRequired, out var required);
-            if (required)
+            if (bool.TryParse(IsRequired, out var required) && required)
             {
                 output.PreElement.SetHtmlContent("<div class='input-group input-group-required'>");
                 output.PostElement.SetHtmlContent("<div class=\"input-group-btn\"><span class=\"required\">*</span></div></div>");
@@ -140,17 +132,25 @@ namespace Nop.Web.Framework.TagHelpers.Admin
             viewContextAware?.Contextualize(ViewContext);
 
             //add form-control class
-            bool.TryParse(RenderFormControlClass, out var renderFormControlClass);
+            _ = bool.TryParse(RenderFormControlClass, out var renderFormControlClass);
             if (string.IsNullOrEmpty(RenderFormControlClass) && For.Metadata.ModelType.Name.Equals("String") || renderFormControlClass)
                 htmlAttributes.Add("class", "form-control");
 
             //generate editor
             var pattern = $"{nameof(ILocalizedModel<object>.Locales)}" + @"(?=\[\w+\]\.)";
             if (!_htmlHelper.ViewData.ContainsKey(For.Name) && Regex.IsMatch(For.Name, pattern))
-                _htmlHelper.ViewData.Add(For.Name, For.Model);
+            {
+                var prefix = _htmlHelper.ViewData.TemplateInfo.HtmlFieldPrefix;
+                var key = string.IsNullOrEmpty(prefix) ? For.Name : $"{prefix}.{For.Name}";
+                _htmlHelper.ViewData.Add(key, For.Model);
+            }
 
             var htmlOutput = _htmlHelper.Editor(For.Name, Template, new { htmlAttributes, postfix = Postfix });
             output.Content.SetHtmlContent(htmlOutput);
+
+            return Task.CompletedTask;
         }
+
+        #endregion
     }
 }

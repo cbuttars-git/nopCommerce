@@ -1,32 +1,7 @@
 @model VendorSettingsModel
 
-<div class="panel-body">
-    <script>
-        $(document).ready(function () {
-            $("#@Html.IdFor(model => model.AllowVendorsToEditInfo)").click(toggleAllowVendorsToEditInfo);
-            $("#@Html.IdFor(model => model.AllowCustomersToApplyForVendorAccount)").click(toggleAllowCustomersToApplyForVendorAccount);
-
-            toggleAllowVendorsToEditInfo();
-            toggleAllowCustomersToApplyForVendorAccount();
-        });
-
-        function toggleAllowVendorsToEditInfo() {
-            if ($('#@Html.IdFor(model => model.AllowVendorsToEditInfo)').is(':checked')) {
-                $('#pnlNotifyStoreOwnerAboutVendorInformationChange').show();
-            } else {
-                $('#pnlNotifyStoreOwnerAboutVendorInformationChange').hide();
-            }
-        }
-
-        function toggleAllowCustomersToApplyForVendorAccount() {
-            if ($('#@Html.IdFor(model => model.AllowCustomersToApplyForVendorAccount)').is(':checked')) {
-                $('#pnlTermsOfServiceEnabled').show();
-            } else {
-                $('#pnlTermsOfServiceEnabled').hide();
-            }
-        }
-    </script>
-    <div class="form-group">
+<div class="card-body">
+    <div class="form-group row">
         <div class="col-md-3">
             <nop-override-store-checkbox asp-for="AllowCustomersToApplyForVendorAccount_OverrideForStore" asp-input="AllowCustomersToApplyForVendorAccount" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
             <nop-label asp-for="AllowCustomersToApplyForVendorAccount" />
@@ -37,7 +12,7 @@
         </div>
     </div>
     <nop-nested-setting asp-for="AllowCustomersToApplyForVendorAccount">
-        <div class="form-group" id="pnlTermsOfServiceEnabled">
+        <div class="form-group row">
             <div class="col-md-3">
                 <nop-override-store-checkbox asp-for="TermsOfServiceEnabled_OverrideForStore" asp-input="TermsOfServiceEnabled" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
                 <nop-label asp-for="TermsOfServiceEnabled" />
@@ -48,7 +23,7 @@
             </div>
         </div>
     </nop-nested-setting>
-    <div class="form-group advanced-setting">
+    <div class="form-group row advanced-setting">
         <div class="col-md-3">
             <nop-override-store-checkbox asp-for="AllowVendorsToEditInfo_OverrideForStore" asp-input="AllowVendorsToEditInfo" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
             <nop-label asp-for="AllowVendorsToEditInfo" />
@@ -59,7 +34,7 @@
         </div>
     </div>
     <nop-nested-setting asp-for="AllowVendorsToEditInfo">
-        <div class="form-group advanced-setting" id="pnlNotifyStoreOwnerAboutVendorInformationChange">
+        <div class="form-group row advanced-setting">
             <div class="col-md-3">
                 <nop-override-store-checkbox asp-for="NotifyStoreOwnerAboutVendorInformationChange_OverrideForStore" asp-input="NotifyStoreOwnerAboutVendorInformationChange" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
                 <nop-label asp-for="NotifyStoreOwnerAboutVendorInformationChange" />
@@ -70,7 +45,7 @@
             </div>
         </div>
     </nop-nested-setting>
-    <div class="form-group advanced-setting">
+    <div class="form-group row advanced-setting">
         <div class="col-md-3">
             <nop-override-store-checkbox asp-for="MaximumProductNumber_OverrideForStore" asp-input="MaximumProductNumber" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
             <nop-label asp-for="MaximumProductNumber" />
@@ -80,7 +55,7 @@
             <span asp-validation-for="MaximumProductNumber"></span>
         </div>
     </div>
-    <div class="form-group advanced-setting">
+    <div class="form-group row advanced-setting">
         <div class="col-md-3">
             <nop-override-store-checkbox asp-for="AllowVendorsToImportProducts_OverrideForStore" asp-input="AllowVendorsToImportProducts" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
             <nop-label asp-for="AllowVendorsToImportProducts" />

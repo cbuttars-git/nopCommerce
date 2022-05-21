@@ -1,8 +1,23 @@
-﻿@{
+﻿@using Nop.Core.Domain.Seo
+@inject SeoSettings seoSettings
+
+@{
     Layout = "_ColumnsOne";
 
+    //title
+    if (!string.IsNullOrEmpty(seoSettings.HomepageTitle))
+    {
+        NopHtml.AddTitleParts(seoSettings.HomepageTitle);
+    }
+
+    //meta
+    if (!string.IsNullOrEmpty(seoSettings.HomepageDescription))
+    {
+        NopHtml.AddMetaDescriptionParts(seoSettings.HomepageDescription);
+    }
+
     //page class
-    Html.AppendPageCssClassParts("html-home-page");
+    NopHtml.AppendPageCssClassParts("html-home-page");
 }
 <div class="page home-page">
     <div class="page-body">

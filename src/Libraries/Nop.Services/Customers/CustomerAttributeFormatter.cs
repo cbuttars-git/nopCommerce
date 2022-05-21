@@ -1,8 +1,9 @@
-using System.Net;
+﻿using System.Net;
 using System.Text;
+using System.Threading.Tasks;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
-using Nop.Core.Html;
+using Nop.Services.Html;
 using Nop.Services.Localization;
 
 namespace Nop.Services.Customers
@@ -16,6 +17,7 @@ namespace Nop.Services.Customers
 
         private readonly ICustomerAttributeParser _customerAttributeParser;
         private readonly ICustomerAttributeService _customerAttributeService;
+        private readonly IHtmlFormatter _htmlFormatter;
         private readonly ILocalizationService _localizationService;
         private readonly IWorkContext _workContext;
 
@@ -25,11 +27,13 @@ namespace Nop.Services.Customers
 
         public CustomerAttributeFormatter(ICustomerAttributeParser customerAttributeParser,
             ICustomerAttributeService customerAttributeService,
+            IHtmlFormatter htmlFormatter,
             ILocalizationService localizationService,
             IWorkContext workContext)
         {
             _customerAttributeParser = customerAttributeParser;
             _customerAttributeService = customerAttributeService;
+            _htmlFormatter = htmlFormatter;
             _localizationService = localizationService;
             _workContext = workContext;
         }
@@ -44,12 +48,15 @@ namespace Nop.Services.Customers
         /// <param name="attributesXml">Attributes in XML format</param>
         /// <param name="separator">Separator</param>
         /// <param name="htmlEncode">A value indicating whether to encode (HTML) values</param>
-        /// <returns>Attributes</returns>
-        public virtual string FormatAttributes(string attributesXml, string separator = "<br />", bool htmlEncode = true)
+        /// <returns>
+        /// A task that represents the asynchronous operation
+        /// The task result contains the attributes
+        /// </returns>
+        public virtual async Task<string> FormatAttributesAsync(string attributesXml, string separator = "<br />", bool htmlEncode = true)
         {
             var result = new StringBuilder();
-
-            var attributes = _customerAttributeParser.ParseCustomerAttributes(attributesXml);
+            var currentLanguage = await _workContext.GetWorkingLanguageAsync();
+            var attributes = await _customerAttributeParser.ParseCustomerAttributesAsync(attributesXml);
             for (var i = 0; i < attributes.Count; i++)
             {
                 var attribute = attributes[i];
@@ -64,11 +71,11 @@ namespace Nop.Services.Customers
                         if (attribute.AttributeControlType == AttributeControlType.MultilineTextbox)
                         {
                             //multiline textbox
-                            var attributeName = _localizationService.GetLocalized(attribute, a => a.Name, _workContext.WorkingLanguage.Id);
+                            var attributeName = await _localizationService.GetLocalizedAsync(attribute, a => a.Name, currentLanguage.Id);
                             //encode (if required)
                             if (htmlEncode)
                                 attributeName = WebUtility.HtmlEncode(attributeName);
-                            formattedAttribute = $"{attributeName}: {HtmlHelper.FormatText(valueStr, false, true, false, false, false, false)}";
+                            formattedAttribute = $"{attributeName}: {_htmlFormatter.FormatText(valueStr, false, true, false, false, false, false)}";
                             //we never encode multiline textbox input
                         }
                         else if (attribute.AttributeControlType == AttributeControlType.FileUpload)
@@ -79,7 +86,7 @@ namespace Nop.Services.Customers
                         else
                         {
                             //other attributes (textbox, datepicker)
-                            formattedAttribute = $"{_localizationService.GetLocalized(attribute, a => a.Name, _workContext.WorkingLanguage.Id)}: {valueStr}";
+                            formattedAttribute = $"{await _localizationService.GetLocalizedAsync(attribute, a => a.Name, currentLanguage.Id)}: {valueStr}";
                             //encode (if required)
                             if (htmlEncode)
                                 formattedAttribute = WebUtility.HtmlEncode(formattedAttribute);
@@ -89,10 +96,10 @@ namespace Nop.Services.Customers
                     {
                         if (int.TryParse(valueStr, out var attributeValueId))
                         {
-                            var attributeValue = _customerAttributeService.GetCustomerAttributeValueById(attributeValueId);
+                            var attributeValue = await _customerAttributeService.GetCustomerAttributeValueByIdAsync(attributeValueId);
                             if (attributeValue != null)
                             {
-                                formattedAttribute = $"{_localizationService.GetLocalized(attribute, a => a.Name, _workContext.WorkingLanguage.Id)}: {_localizationService.GetLocalized(attributeValue, a => a.Name, _workContext.WorkingLanguage.Id)}";
+                                formattedAttribute = $"{await _localizationService.GetLocalizedAsync(attribute, a => a.Name, currentLanguage.Id)}: {await _localizationService.GetLocalizedAsync(attributeValue, a => a.Name, currentLanguage.Id)}";
                             }
                             //encode (if required)
                             if (htmlEncode)

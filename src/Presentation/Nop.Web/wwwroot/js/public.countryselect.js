@@ -10,6 +10,10 @@
         var $this = $(this);
         var selectedItem = $this.val();
         var stateProvince = $($this.data('stateprovince'));
+
+        if(stateProvince.length == 0)
+          return;
+
         var loading = $($this.data('loading'));
         loading.show();
         $.ajax({
@@ -30,8 +34,11 @@
             error: function (jqXHR, textStatus, errorThrown) {
                 alert('Failed to retrieve states.');
             },
-            complete: function (jqXHR, textStatus) {
-                loading.hide();
+            complete: function(jqXHR, textStatus) {
+              var stateId = (typeof Billing !== "undefined") ? Billing.selectedStateId : (typeof CheckoutBilling !== "undefined") ? CheckoutBilling.selectedStateId : 0;
+              $('#' + stateProvince[0].id + ' option[value=' + stateId + ']').prop('selected', true);
+
+              loading.hide();
             }
         });
     }

@@ -1,4 +1,4 @@
-﻿using Nop.Services.Tasks;
+﻿using Nop.Services.ScheduleTasks;
 
 namespace Nop.Services.Common
 {
@@ -27,9 +27,9 @@ namespace Nop.Services.Common
         /// <summary>
         /// Executes a task
         /// </summary>
-        public void Execute()
+        public async System.Threading.Tasks.Task ExecuteAsync()
         {
-            _storeHttpClient.KeepAliveAsync().Wait();
+            await _storeHttpClient.KeepAliveAsync();
         }
 
         #endregion

@@ -3,10 +3,10 @@
     Layout = "_ColumnsTwo";
 
     //title
-    Html.AddTitleParts(T("PageTitle.VendorInfo").Text);
+    NopHtml.AddTitleParts(T("PageTitle.VendorInfo").Text);
     //page class
-    Html.AppendPageCssClassParts("html-account-page");
-    Html.AppendPageCssClassParts("html-vendorinfo-page");
+    NopHtml.AppendPageCssClassParts("html-account-page");
+    NopHtml.AppendPageCssClassParts("html-vendorinfo-page");
 }
 @section left
 {
@@ -41,12 +41,12 @@
                     </div>
                     <div class="inputs">
                         <label asp-for="PictureUrl" asp-postfix=":"></label>
-                        <input name="uploadedFile" type="file" />
+                        <input name="uploadedFile" type="file" accept="image/*" />
                         @if (!string.IsNullOrEmpty(Model.PictureUrl))
                         {
                             <div class="vendor-picture">
                                 <img src="@(Model.PictureUrl)" alt="picture" />
-                                <input type="submit" name="remove-picture" class="button-2 remove-picture-button" value="@T("Account.VendorInfo.Picture.Remove")" />
+                                <button type="submit" name="remove-picture" class="button-2 remove-picture-button">@T("Account.VendorInfo.Picture.Remove")</button>
                             </div>
                         }
                     </div>
@@ -61,7 +61,7 @@
             </div>
         }
             <div class="buttons">
-                <input type="submit" value="@T("Common.Save")" name="save-info-button" class="button-1 save-vendorinfo-button" />
+                <button type="submit" name="save-info-button" class="button-1 save-vendorinfo-button">@T("Common.Save")</button>
             </div>
         </form>
     </div>

@@ -1,5 +1,7 @@
 ﻿using Nop.Core;
 using Nop.Core.Infrastructure;
+using Nop.Data.Configuration;
+using Nop.Data.DataProviders;
 
 namespace Nop.Data
 {
@@ -17,15 +19,13 @@ namespace Nop.Data
         /// <returns></returns>
         public static INopDataProvider GetDataProvider(DataProviderType dataProviderType)
         {
-            switch (dataProviderType)
+            return dataProviderType switch
             {
-                case DataProviderType.SqlServer:
-                    return new MsSqlNopDataProvider();
-                case DataProviderType.MySql:
-                    return new MySqlNopDataProvider();
-                default:
-                    throw new NopException($"Not supported data provider name: '{dataProviderType}'");
-            }
+                DataProviderType.SqlServer => new MsSqlNopDataProvider(),
+                DataProviderType.MySql => new MySqlNopDataProvider(),
+                DataProviderType.PostgreSQL => new PostgreSqlDataProvider(),
+                _ => throw new NopException($"Not supported data provider name: '{dataProviderType}'"),
+            };
         }
 
         #endregion
@@ -39,7 +39,7 @@ namespace Nop.Data
         {
             get
             {
-                var dataProviderType = Singleton<DataSettings>.Instance.DataProvider;
+                var dataProviderType = Singleton<DataConfig>.Instance.DataProvider;
 
                 return GetDataProvider(dataProviderType);
             }

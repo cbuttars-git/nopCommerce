@@ -2,95 +2,80 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Razor.TagHelpers;
-using Nop.Core.Infrastructure;
 using Nop.Services.Localization;
 using Nop.Web.Framework.Extensions;
 
 namespace Nop.Web.Framework.TagHelpers.Shared
 {
     /// <summary>
-    /// nop-date-picker tag helper
+    /// "nop-date-picker" tag helper
     /// </summary>
-    [HtmlTargetElement("nop-date-picker", 
-        Attributes = DayNameAttributeName + "," + MonthNameAttributeName + "," + YearNameAttributeName, 
-        TagStructure = TagStructure.WithoutEndTag)]
+    [HtmlTargetElement("nop-date-picker", Attributes = DAY_NAME_ATTRIBUTE_NAME + "," + MONTH_NAME_ATTRIBUTE_NAME + "," + YEAR_NAME_ATTRIBUTE_NAME, TagStructure = TagStructure.WithoutEndTag)]
     public class NopDatePickerTagHelper : TagHelper
     {
-        private const string DayNameAttributeName = "asp-day-name";
-        private const string MonthNameAttributeName = "asp-month-name";
-        private const string YearNameAttributeName = "asp-year-name";
+        #region Constants
 
-        private const string BeginYearAttributeName = "asp-begin-year";
-        private const string EndYearAttributeName = "asp-end-year";
+        private const string DAY_NAME_ATTRIBUTE_NAME = "asp-day-name";
+        private const string MONTH_NAME_ATTRIBUTE_NAME = "asp-month-name";
+        private const string YEAR_NAME_ATTRIBUTE_NAME = "asp-year-name";
 
-        private const string SelectedDayAttributeName = "asp-selected-day";
-        private const string SelectedMonthAttributeName = "asp-selected-month";
-        private const string SelectedYearAttributeName = "asp-selected-year";
+        private const string BEGIN_YEAR_ATTRIBUTE_NAME = "asp-begin-year";
+        private const string END_YEAR_ATTRIBUTE_NAME = "asp-end-year";
 
-        private const string WrapTagsAttributeName = "asp-wrap-tags";
+        private const string SELECTED_DATE_ATTRIBUTE_NAME = "asp-selected-date";
 
-        private readonly IHtmlHelper _htmlHelper;
+        private const string WRAP_TAGS_ATTRIBUTE_NAME = "asp-wrap-tags";
 
-        /// <summary>
-        /// HtmlGenerator
-        /// </summary>
+        #endregion
+
+        #region Properties
+
         protected IHtmlGenerator Generator { get; set; }
 
         /// <summary>
         /// Day name
         /// </summary>
-        [HtmlAttributeName(DayNameAttributeName)]
+        [HtmlAttributeName(DAY_NAME_ATTRIBUTE_NAME)]
         public string DayName { get; set; }
 
         /// <summary>
         /// Month name
         /// </summary>
-        [HtmlAttributeName(MonthNameAttributeName)]
+        [HtmlAttributeName(MONTH_NAME_ATTRIBUTE_NAME)]
         public string MonthName { get; set; }
 
         /// <summary>
         /// Year name
         /// </summary>
-        [HtmlAttributeName(YearNameAttributeName)]
+        [HtmlAttributeName(YEAR_NAME_ATTRIBUTE_NAME)]
         public string YearName { get; set; }
 
         /// <summary>
         /// Begin year
         /// </summary>
-        [HtmlAttributeName(BeginYearAttributeName)]
-        public int? BeginYear { get; set; }
+        [HtmlAttributeName(BEGIN_YEAR_ATTRIBUTE_NAME)]
+        public DateTime? BeginYear { get; set; }
 
         /// <summary>
         /// End year
         /// </summary>
-        [HtmlAttributeName(EndYearAttributeName)]
-        public int? EndYear { get; set; }
+        [HtmlAttributeName(END_YEAR_ATTRIBUTE_NAME)]
+        public DateTime? EndYear { get; set; }
 
         /// <summary>
         /// Selected day
         /// </summary>
-        [HtmlAttributeName(SelectedDayAttributeName)]
-        public int? SelectedDay { get; set; }
-
-        /// <summary>
-        /// Selected month
-        /// </summary>
-        [HtmlAttributeName(SelectedMonthAttributeName)]
-        public int? SelectedMonth { get; set; }
-
-        /// <summary>
-        /// Selected year
-        /// </summary>
-        [HtmlAttributeName(SelectedYearAttributeName)]
-        public int? SelectedYear { get; set; }
+        [HtmlAttributeName(SELECTED_DATE_ATTRIBUTE_NAME)]
+        public DateTime? SelectedDate { get; set; }
 
         /// <summary>
         /// Wrap tags
         /// </summary>
-        [HtmlAttributeName(WrapTagsAttributeName)]
+        [HtmlAttributeName(WRAP_TAGS_ATTRIBUTE_NAME)]
         public string WrapTags { get; set; }
 
         /// <summary>
@@ -100,33 +85,41 @@ namespace Nop.Web.Framework.TagHelpers.Shared
         [ViewContext]
         public ViewContext ViewContext { get; set; }
 
-        /// <summary>
-        /// Ctor
-        /// </summary>
-        /// <param name="generator">HTML generator</param>
-        /// <param name="htmlHelper">HTML helper</param>
-        public NopDatePickerTagHelper(IHtmlGenerator generator, IHtmlHelper htmlHelper)
+        #endregion
+
+        #region Fields
+
+        private readonly IHtmlHelper _htmlHelper;
+        private readonly ILocalizationService _localizationService;
+
+        #endregion
+
+        #region Ctor
+
+        public NopDatePickerTagHelper(IHtmlGenerator generator, IHtmlHelper htmlHelper, ILocalizationService localizationService)
         {
             Generator = generator;
             _htmlHelper = htmlHelper;
+            _localizationService = localizationService;
         }
 
+        #endregion
+
+        #region Methods
+
         /// <summary>
-        /// Process
+        /// Asynchronously executes the tag helper with the given context and output
         /// </summary>
-        /// <param name="context">Context</param>
-        /// <param name="output">Output</param>
-        public override void Process(TagHelperContext context, TagHelperOutput output)
+        /// <param name="context">Contains information associated with the current HTML tag</param>
+        /// <param name="output">A stateful HTML element used to generate an HTML tag</param>
+        /// <returns>A task that represents the asynchronous operation</returns>
+        public override async Task ProcessAsync(TagHelperContext context, TagHelperOutput output)
         {
             if (context == null)
-            {
                 throw new ArgumentNullException(nameof(context));
-            }
 
             if (output == null)
-            {
                 throw new ArgumentNullException(nameof(output));
-            }
 
             //contextualize IHtmlHelper
             var viewContextAware = _htmlHelper as IViewContextAware;
@@ -148,15 +141,13 @@ namespace Nop.Web.Framework.TagHelpers.Shared
 
             var tagHelperAttributes = new List<string>
             {
-                DayNameAttributeName,
-                MonthNameAttributeName,
-                YearNameAttributeName,
-                BeginYearAttributeName,
-                EndYearAttributeName,
-                SelectedDayAttributeName,
-                SelectedMonthAttributeName,
-                SelectedYearAttributeName,
-                WrapTagsAttributeName
+                DAY_NAME_ATTRIBUTE_NAME,
+                MONTH_NAME_ATTRIBUTE_NAME,
+                YEAR_NAME_ATTRIBUTE_NAME,
+                BEGIN_YEAR_ATTRIBUTE_NAME,
+                END_YEAR_ATTRIBUTE_NAME,
+                SELECTED_DATE_ATTRIBUTE_NAME,
+                WRAP_TAGS_ATTRIBUTE_NAME
             };
             var customerAttributes = new Dictionary<string, object>();
             foreach (var attribute in context.AllAttributes)
@@ -169,55 +160,55 @@ namespace Nop.Web.Framework.TagHelpers.Shared
             monthsList.MergeAttributes(htmlAttributesDictionary, true);
             yearsList.MergeAttributes(htmlAttributesDictionary, true);
 
+            var currentCalendar = CultureInfo.CurrentCulture.Calendar;
+
             var days = new StringBuilder();
             var months = new StringBuilder();
             var years = new StringBuilder();
 
-            var locService = EngineContext.Current.Resolve<ILocalizationService>();
+            days.AppendFormat("<option value='{0}'>{1}</option>", "0", await _localizationService.GetResourceAsync("Common.Day"));
 
-            days.AppendFormat("<option value='{0}'>{1}</option>", "0", locService.GetResource("Common.Day"));
             for (var i = 1; i <= 31; i++)
-                days.AppendFormat("<option value='{0}'{1}>{0}</option>", i, 
-                    (SelectedDay.HasValue && SelectedDay.Value == i) ? " selected=\"selected\"" : null);
+                days.AppendFormat("<option value='{0}'{1}>{0}</option>", i,
+                    (SelectedDate.HasValue && currentCalendar.GetDayOfMonth(SelectedDate.Value) == i) ? " selected=\"selected\"" : null);
 
-            months.AppendFormat("<option value='{0}'>{1}</option>", "0", locService.GetResource("Common.Month"));
+            months.AppendFormat("<option value='{0}'>{1}</option>", "0", await _localizationService.GetResourceAsync("Common.Month"));
+
             for (var i = 1; i <= 12; i++)
             {
                 months.AppendFormat("<option value='{0}'{1}>{2}</option>",
                     i,
-                    (SelectedMonth.HasValue && SelectedMonth.Value == i) ? " selected=\"selected\"" : null,
-                    CultureInfo.CurrentUICulture.DateTimeFormat.GetMonthName(i));
+                    (SelectedDate.HasValue && currentCalendar.GetMonth(SelectedDate.Value) == i) ? " selected=\"selected\"" : null,
+                    CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(i));
             }
-            
-            years.AppendFormat("<option value='{0}'>{1}</option>", "0", locService.GetResource("Common.Year"));
 
-            if (BeginYear == null)
-                BeginYear = DateTime.UtcNow.Year - 100;
-            if (EndYear == null)
-                EndYear = DateTime.UtcNow.Year;
+            years.AppendFormat("<option value='{0}'>{1}</option>", "0", await _localizationService.GetResourceAsync("Common.Year"));
+
+            BeginYear ??= DateTime.UtcNow.AddYears(-100);
+            EndYear ??= DateTime.UtcNow;
 
             if (EndYear > BeginYear)
             {
-                for (var i = BeginYear.Value; i <= EndYear.Value; i++)
+                for (var i = currentCalendar.GetYear(BeginYear.Value); i <= currentCalendar.GetYear(EndYear.Value); i++)
                     years.AppendFormat("<option value='{0}'{1}>{0}</option>", i,
-                        (SelectedYear.HasValue && SelectedYear.Value == i) ? " selected=\"selected\"" : null);
+                        (SelectedDate.HasValue && currentCalendar.GetYear(SelectedDate.Value) == i) ? " selected=\"selected\"" : null);
             }
             else
             {
-                for (var i = BeginYear.Value; i >= EndYear.Value; i--)
+                for (var i = currentCalendar.GetYear(BeginYear.Value); i >= currentCalendar.GetYear(EndYear.Value); i--)
                     years.AppendFormat("<option value='{0}'{1}>{0}</option>", i,
-                        (SelectedYear.HasValue && SelectedYear.Value == i) ? " selected=\"selected\"" : null);
+                        (SelectedDate.HasValue && currentCalendar.GetYear(SelectedDate.Value) == i) ? " selected=\"selected\"" : null);
             }
 
             daysList.InnerHtml.AppendHtml(days.ToString());
             monthsList.InnerHtml.AppendHtml(months.ToString());
             yearsList.InnerHtml.AppendHtml(years.ToString());
-            
-            if (bool.TryParse(WrapTags, out bool wrapTags) && wrapTags)
+
+            if (bool.TryParse(WrapTags, out var wrapTags) && wrapTags)
             {
-                var wrapDaysList = "<span class=\"days-list select-wrapper\">" + daysList.RenderHtmlContent() + "</span>";
-                var wrapMonthsList = "<span class=\"months-list select-wrapper\">" + monthsList.RenderHtmlContent() + "</span>";
-                var wrapYearsList = "<span class=\"years-list select-wrapper\">" + yearsList.RenderHtmlContent() + "</span>";
+                var wrapDaysList = "<span class=\"days-list select-wrapper\">" + await daysList.RenderHtmlContentAsync() + "</span>";
+                var wrapMonthsList = "<span class=\"months-list select-wrapper\">" + await monthsList.RenderHtmlContentAsync() + "</span>";
+                var wrapYearsList = "<span class=\"years-list select-wrapper\">" + await yearsList.RenderHtmlContentAsync() + "</span>";
 
                 output.Content.AppendHtml(wrapDaysList);
                 output.Content.AppendHtml(wrapMonthsList);
@@ -230,5 +221,7 @@ namespace Nop.Web.Framework.TagHelpers.Shared
                 output.Content.AppendHtml(yearsList);
             }
         }
+
+        #endregion
     }
 }

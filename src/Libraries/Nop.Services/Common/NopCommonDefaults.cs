@@ -27,6 +27,11 @@ namespace Nop.Services.Common
         #region Maintenance
 
         /// <summary>
+        /// Gets a default timeout (in milliseconds) before restarting the application
+        /// </summary>
+        public static int RestartTimeout => 3000;
+
+        /// <summary>
         /// Gets a path to the database backup files
         /// </summary>
         public static string DbBackupsPath => "db_backups\\";
@@ -48,12 +53,12 @@ namespace Nop.Services.Common
         /// <summary>
         ///  Gets a head link for the favicon
         /// </summary>
-        public static string SingleFaviconHeadLink => "<link rel=\"shortcut icon\" href=\"\\icons\\icons_{0}\\{1}\">";
+        public static string SingleFaviconHeadLink => "<link rel=\"shortcut icon\" href=\"/icons/icons_{0}/{1}\">";
 
         /// <summary>
         /// Gets a path to the favicon and app icons
         /// </summary>
-        public static string FaviconAndAppIconsPath => "icons\\icons_{0}";
+        public static string FaviconAndAppIconsPath => "icons/icons_{0}";
 
         /// <summary>
         /// Gets a name of the old favicon icon for current store
@@ -67,7 +72,7 @@ namespace Nop.Services.Common
         /// <summary>
         /// Gets a path to the localization client-side validation 
         /// </summary>
-        public static string LocalePatternPath => "lib\\cldr-data\\main\\{0}";
+        public static string LocalePatternPath => "lib_npm/cldr-data/main/{0}";
 
         /// <summary>
         /// Gets a name of the archive with localization of templates
@@ -78,6 +83,21 @@ namespace Nop.Services.Common
         /// Gets a name of the default pattern locale
         /// </summary>
         public static string DefaultLocalePattern => "en";
+
+        /// <summary>
+        /// Gets default CultureInfo 
+        /// </summary>
+        public static string DefaultLanguageCulture => "en-US";
+
+        /// <summary>
+        /// Gets minimal progress of language pack translation to download and install
+        /// </summary>
+        public static int LanguagePackMinTranslationProgressToInstall => 80;
+
+        /// <summary>
+        /// Gets a name of generic attribute to store the value of 'LanguagePackProgress'
+        /// </summary>
+        public static string LanguagePackProgressAttribute => "LanguagePackProgress";
 
         #endregion
 
@@ -114,8 +134,9 @@ namespace Nop.Services.Common
         /// {2} : admin email
         /// {3} : store URL
         /// {4} : language code
+        /// {5} : culture name
         /// </remarks>
-        public static string NopInstallationCompletedPath => "installation-completed?version={0}&local={1}&email={2}&url={3}&language={4}";
+        public static string NopInstallationCompletedPath => "installation-completed?version={0}&local={1}&email={2}&url={3}&language={4}&culture={5}";
 
         /// <summary>
         /// Gets a path to request the nopCommerce official site for available categories of marketplace extensions
@@ -156,15 +177,10 @@ namespace Nop.Services.Common
         /// <summary>
         /// Gets a key for caching
         /// </summary>
-        public static CacheKey AddressAttributesAllCacheKey => new CacheKey("Nop.addressattribute.all");
-
-        /// <summary>
-        /// Gets a key for caching
-        /// </summary>
         /// <remarks>
         /// {0} : address attribute ID
         /// </remarks>
-        public static CacheKey AddressAttributeValuesAllCacheKey => new CacheKey("Nop.addressattributevalue.all-{0}");
+        public static CacheKey AddressAttributeValuesByAttributeCacheKey => new("Nop.addressattributevalue.byattribute.{0}");
 
         #endregion
 
@@ -177,7 +193,7 @@ namespace Nop.Services.Common
         /// {0} : entity ID
         /// {1} : key group
         /// </remarks>
-        public static CacheKey GenericAttributeCacheKey => new CacheKey("Nop.genericattribute.{0}-{1}");
+        public static CacheKey GenericAttributeCacheKey => new("Nop.genericattribute.{0}-{1}");
 
         #endregion
 

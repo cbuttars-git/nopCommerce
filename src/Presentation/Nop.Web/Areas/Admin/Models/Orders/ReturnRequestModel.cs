@@ -7,7 +7,7 @@ namespace Nop.Web.Areas.Admin.Models.Orders
     /// <summary>
     /// Represents a return request model
     /// </summary>
-    public partial class ReturnRequestModel : BaseNopEntityModel
+    public partial record ReturnRequestModel : BaseNopEntityModel
     {
         #region Properties
 
@@ -34,7 +34,10 @@ namespace Nop.Web.Areas.Admin.Models.Orders
 
         [NopResourceDisplayName("Admin.ReturnRequests.Fields.Quantity")]
         public int Quantity { get; set; }
-        
+
+        [NopResourceDisplayName("Admin.ReturnRequests.Fields.ReturnedQuantity")]
+        public int ReturnedQuantity { get; set; }
+
         [NopResourceDisplayName("Admin.ReturnRequests.Fields.ReasonForReturn")]
         public string ReasonForReturn { get; set; }
         

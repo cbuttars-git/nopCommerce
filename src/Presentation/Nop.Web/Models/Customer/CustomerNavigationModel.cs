@@ -3,7 +3,7 @@ using Nop.Web.Framework.Models;
 
 namespace Nop.Web.Models.Customer
 {
-    public partial class CustomerNavigationModel : BaseNopModel
+    public partial record CustomerNavigationModel : BaseNopModel
     {
         public CustomerNavigationModel()
         {
@@ -12,14 +12,14 @@ namespace Nop.Web.Models.Customer
 
         public IList<CustomerNavigationItemModel> CustomerNavigationItems { get; set; }
 
-        public CustomerNavigationEnum SelectedTab { get; set; }
+        public int SelectedTab { get; set; }
     }
 
-    public class CustomerNavigationItemModel : BaseNopModel
+    public record CustomerNavigationItemModel : BaseNopModel
     {
         public string RouteName { get; set; }
         public string Title { get; set; }
-        public CustomerNavigationEnum Tab { get; set; }
+        public int Tab { get; set; }
         public string ItemClass { get; set; }
     }
 
@@ -38,6 +38,7 @@ namespace Nop.Web.Models.Customer
         ProductReviews = 100,
         VendorInfo = 110,
         GdprTools = 120,
-        CheckGiftCardBalance = 130
+        CheckGiftCardBalance = 130,
+        MultiFactorAuthentication = 140
     }
 }

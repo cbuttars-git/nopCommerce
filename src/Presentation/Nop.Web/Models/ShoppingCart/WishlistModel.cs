@@ -6,7 +6,7 @@ using Nop.Web.Models.Media;
 
 namespace Nop.Web.Models.ShoppingCart
 {
-    public partial class WishlistModel : BaseNopModel
+    public partial record WishlistModel : BaseNopModel
     {
         public WishlistModel()
         {
@@ -35,7 +35,7 @@ namespace Nop.Web.Models.ShoppingCart
         
 		#region Nested Classes
 
-        public partial class ShoppingCartItemModel : BaseNopEntityModel
+        public partial record ShoppingCartItemModel : BaseNopEntityModel
         {
             public ShoppingCartItemModel()
             {
@@ -55,10 +55,13 @@ namespace Nop.Web.Models.ShoppingCart
             public string ProductSeName { get; set; }
 
             public string UnitPrice { get; set; }
+            public decimal UnitPriceValue { get; set; }
 
             public string SubTotal { get; set; }
+            public decimal SubTotalValue { get; set; }
 
             public string Discount { get; set; }
+            public decimal DiscountValue { get; set; }
             public int? MaximumDiscountedQty { get; set; }
 
             public int Quantity { get; set; }

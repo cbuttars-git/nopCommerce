@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using Autofac;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Nop.Core.Configuration;
 
 namespace Nop.Core.Infrastructure
 {
@@ -19,8 +17,7 @@ namespace Nop.Core.Infrastructure
         /// </summary>
         /// <param name="services">Collection of service descriptors</param>
         /// <param name="configuration">Configuration of the application</param>
-        /// <param name="nopConfig">Nop configuration parameters</param>
-        void ConfigureServices(IServiceCollection services, IConfiguration configuration, NopConfig nopConfig);
+        void ConfigureServices(IServiceCollection services, IConfiguration configuration);
 
         /// <summary>
         /// Configure HTTP request pipeline
@@ -31,16 +28,18 @@ namespace Nop.Core.Infrastructure
         /// <summary>
         /// Resolve dependency
         /// </summary>
+        /// <param name="scope">Scope</param>
         /// <typeparam name="T">Type of resolved service</typeparam>
         /// <returns>Resolved service</returns>
-        T Resolve<T>() where T : class;
+        T Resolve<T>(IServiceScope scope = null) where T : class;
 
         /// <summary>
         /// Resolve dependency
         /// </summary>
         /// <param name="type">Type of resolved service</param>
+        /// <param name="scope">Scope</param>
         /// <returns>Resolved service</returns>
-        object Resolve(Type type);
+        object Resolve(Type type, IServiceScope scope = null);
 
         /// <summary>
         /// Resolve dependencies
@@ -56,11 +55,5 @@ namespace Nop.Core.Infrastructure
         /// <returns>Resolved service</returns>
         object ResolveUnregistered(Type type);
 
-        /// <summary>
-        /// Register dependencies
-        /// </summary>
-        /// <param name="containerBuilder">Container builder</param>
-        /// <param name="nopConfig">Nop configuration parameters</param>
-        void RegisterDependencies(ContainerBuilder containerBuilder, NopConfig nopConfig);
     }
 }

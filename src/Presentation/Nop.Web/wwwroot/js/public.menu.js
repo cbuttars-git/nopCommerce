@@ -20,9 +20,13 @@
 
     getRoot: function () {
         let self = this;
+        var postData = {};
+        addAntiForgeryToken(postData);
+
         $.ajax({
             cache: false,
             url: this.rootRoute,
+            data: postData,
             type: "POST",
             success: function (data, textStatus, jqXHR) {
                 let lis = self.categoryList(data, true);
@@ -49,13 +53,16 @@
         let selfTop = this;
 
         let catSel = 'li[' + this.topMenuLineAttr + ' = ' + id + ']';
-        if ($(catSel).hasClass("loaded")) { return; }
+        if ($(catSel).is(".loaded,.loading")) { return; }
+
+        var postData = {
+          "id": id
+        };
+        addAntiForgeryToken(postData);
 
         $.ajax({
             cache: false,
-            data: {
-                "id": id
-            },
+            data: postData,
             url: this.subCatRoute,
             type: "POST",
             success: function (data, textStatus, jqXHR) {
@@ -67,7 +74,13 @@
                 $(catSel).addClass("loaded");
                 $(catSel + ' > ul').append(listItems);
             },
-            error: this.ajaxFailure
+            error: this.ajaxFailure,
+            beforeSend: function() {
+                $(catSel).addClass("loading");
+            },
+            complete: function() {
+                $(catSel).removeClass("loading");
+            }
         });
     },
 
@@ -77,11 +90,14 @@
         let catSel = 'li[' + this.mobileMenuLineAttr + ' = ' + id + ']';
         if ($(catSel).hasClass("loaded")) { return; }
 
+        var postData = {
+          "id": id
+        };
+        addAntiForgeryToken(postData);
+
         $.ajax({
             cache: false,
-            data: {
-                "id": id
-            },
+            data: postData,
             url: this.subCatRoute,
             type: "POST",
             success: function (data, textStatus, jqXHR) {

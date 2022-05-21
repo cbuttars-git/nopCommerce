@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Nop.Services.Localization;
 using Nop.Web.Framework.Models;
 
@@ -33,14 +34,17 @@ namespace Nop.Web.Framework.Factories
         /// </summary>
         /// <typeparam name="T">Localized model type</typeparam>
         /// <param name="configure">Model configuration action</param>
-        /// <returns>List of localized model</returns>
-        public virtual IList<T> PrepareLocalizedModels<T>(Action<T, int> configure = null) where T : ILocalizedLocaleModel
+        /// <returns>
+        /// A task that represents the asynchronous operation
+        /// The task result contains the list of localized model
+        /// </returns>
+        public virtual async Task<IList<T>> PrepareLocalizedModelsAsync<T>(Func<T, int, Task> configure = null) where T : ILocalizedLocaleModel
         {
             //get all available languages
-            var availableLanguages = _languageService.GetAllLanguages(true);
+            var availableLanguages = await _languageService.GetAllLanguagesAsync(true);
 
             //prepare models
-            var localizedModels = availableLanguages.Select(language =>
+            var localizedModels = await availableLanguages.SelectAwait(async language =>
             {
                 //create localized model
                 var localizedModel = Activator.CreateInstance<T>();
@@ -49,10 +53,11 @@ namespace Nop.Web.Framework.Factories
                 localizedModel.LanguageId = language.Id;
 
                 //invoke the model configuration action
-                configure?.Invoke(localizedModel, localizedModel.LanguageId);
+                if (configure != null)
+                    await configure(localizedModel, localizedModel.LanguageId);
 
                 return localizedModel;
-            }).ToList();
+            }).ToListAsync();
 
             return localizedModels;
         }

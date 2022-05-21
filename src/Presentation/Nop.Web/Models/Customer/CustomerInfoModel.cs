@@ -4,10 +4,12 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Web.Framework.Mvc.ModelBinding;
 using Nop.Web.Framework.Models;
+using System.Globalization;
+using Nop.Core;
 
 namespace Nop.Web.Models.Customer
 {
-    public partial class CustomerInfoModel : BaseNopModel
+    public partial record CustomerInfoModel : BaseNopModel
     {
         public CustomerInfoModel()
         {
@@ -56,16 +58,7 @@ namespace Nop.Web.Models.Customer
         public bool DateOfBirthRequired { get; set; }
         public DateTime? ParseDateOfBirth()
         {
-            if (!DateOfBirthYear.HasValue || !DateOfBirthMonth.HasValue || !DateOfBirthDay.HasValue)
-                return null;
-
-            DateTime? dateOfBirth = null;
-            try
-            {
-                dateOfBirth = new DateTime(DateOfBirthYear.Value, DateOfBirthMonth.Value, DateOfBirthDay.Value);
-            }
-            catch { }
-            return dateOfBirth;
+            return CommonHelper.ParseDate(DateOfBirthYear, DateOfBirthMonth, DateOfBirthDay);
         }
 
         public bool CompanyEnabled { get; set; }
@@ -155,7 +148,7 @@ namespace Nop.Web.Models.Customer
 
         #region Nested classes
 
-        public partial class AssociatedExternalAuthModel : BaseNopEntityModel
+        public partial record AssociatedExternalAuthModel : BaseNopEntityModel
         {
             public string Email { get; set; }
 

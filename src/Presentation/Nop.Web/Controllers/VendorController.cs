@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
@@ -11,6 +12,7 @@ using Nop.Core.Domain.Security;
 using Nop.Core.Domain.Vendors;
 using Nop.Services.Common;
 using Nop.Services.Customers;
+using Nop.Services.Html;
 using Nop.Services.Localization;
 using Nop.Services.Media;
 using Nop.Services.Messages;
@@ -23,6 +25,7 @@ using Nop.Web.Models.Vendors;
 
 namespace Nop.Web.Controllers
 {
+    [AutoValidateAntiforgeryToken]
     public partial class VendorController : BasePublicController
     {
         #region Fields
@@ -31,6 +34,7 @@ namespace Nop.Web.Controllers
         private readonly ICustomerService _customerService;
         private readonly IDownloadService _downloadService;
         private readonly IGenericAttributeService _genericAttributeService;
+        private readonly IHtmlFormatter _htmlFormatter;
         private readonly ILocalizationService _localizationService;
         private readonly IPictureService _pictureService;
         private readonly IUrlRecordService _urlRecordService;
@@ -51,6 +55,7 @@ namespace Nop.Web.Controllers
             ICustomerService customerService,
             IDownloadService downloadService,
             IGenericAttributeService genericAttributeService,
+            IHtmlFormatter htmlFormatter,
             ILocalizationService localizationService,
             IPictureService pictureService,
             IUrlRecordService urlRecordService,
@@ -67,6 +72,7 @@ namespace Nop.Web.Controllers
             _customerService = customerService;
             _downloadService = downloadService;
             _genericAttributeService = genericAttributeService;
+            _htmlFormatter = htmlFormatter;
             _localizationService = localizationService;
             _pictureService = pictureService;
             _urlRecordService = urlRecordService;
@@ -84,20 +90,20 @@ namespace Nop.Web.Controllers
 
         #region Utilities
 
-        protected virtual void UpdatePictureSeoNames(Vendor vendor)
+        protected virtual async Task UpdatePictureSeoNamesAsync(Vendor vendor)
         {
-            var picture = _pictureService.GetPictureById(vendor.PictureId);
+            var picture = await _pictureService.GetPictureByIdAsync(vendor.PictureId);
             if (picture != null)
-                _pictureService.SetSeoFilename(picture.Id, _pictureService.GetPictureSeName(vendor.Name));
+                await _pictureService.SetSeoFilenameAsync(picture.Id, await _pictureService.GetPictureSeNameAsync(vendor.Name));
         }
 
-        protected virtual string ParseVendorAttributes(IFormCollection form)
+        protected virtual async Task<string> ParseVendorAttributesAsync(IFormCollection form)
         {
             if (form == null)
                 throw new ArgumentNullException(nameof(form));
 
             var attributesXml = "";
-            var attributes = _vendorAttributeService.GetAllVendorAttributes();
+            var attributes = await _vendorAttributeService.GetAllVendorAttributesAsync();
             foreach (var attribute in attributes)
             {
                 var controlId = $"{NopVendorDefaults.VendorAttributePrefix}{attribute.Id}";
@@ -135,7 +141,7 @@ namespace Nop.Web.Controllers
                     case AttributeControlType.ReadonlyCheckboxes:
                         {
                             //load read-only (already server-side selected) values
-                            var attributeValues = _vendorAttributeService.GetVendorAttributeValues(attribute.Id);
+                            var attributeValues = await _vendorAttributeService.GetVendorAttributeValuesAsync(attribute.Id);
                             foreach (var selectedAttributeId in attributeValues
                                 .Where(v => v.IsPreSelected)
                                 .Select(v => v.Id)
@@ -175,38 +181,37 @@ namespace Nop.Web.Controllers
 
         #region Methods
 
-        [HttpsRequirement]
-        public virtual IActionResult ApplyVendor()
+        public virtual async Task<IActionResult> ApplyVendor()
         {
             if (!_vendorSettings.AllowCustomersToApplyForVendorAccount)
                 return RedirectToRoute("Homepage");
 
-            if (!_customerService.IsRegistered(_workContext.CurrentCustomer))
+            if (!await _customerService.IsRegisteredAsync(await _workContext.GetCurrentCustomerAsync()))
                 return Challenge();
 
             var model = new ApplyVendorModel();
-            model = _vendorModelFactory.PrepareApplyVendorModel(model, true, false, null);
+            model = await _vendorModelFactory.PrepareApplyVendorModelAsync(model, true, false, null);
             return View(model);
         }
 
         [HttpPost, ActionName("ApplyVendor")]
-        [AutoValidateAntiforgeryToken]
         [ValidateCaptcha]
-        public virtual IActionResult ApplyVendorSubmit(ApplyVendorModel model, bool captchaValid, IFormFile uploadedFile, IFormCollection form)
+        public virtual async Task<IActionResult> ApplyVendorSubmit(ApplyVendorModel model, bool captchaValid, IFormFile uploadedFile, IFormCollection form)
         {
             if (!_vendorSettings.AllowCustomersToApplyForVendorAccount)
                 return RedirectToRoute("Homepage");
 
-            if (!_customerService.IsRegistered(_workContext.CurrentCustomer))
+            var customer = await _workContext.GetCurrentCustomerAsync();
+            if (!await _customerService.IsRegisteredAsync(customer))
                 return Challenge();
 
-            if (_customerService.IsAdmin(_workContext.CurrentCustomer))
-                ModelState.AddModelError("", _localizationService.GetResource("Vendors.ApplyAccount.IsAdmin"));
+            if (await _customerService.IsAdminAsync(customer))
+                ModelState.AddModelError("", await _localizationService.GetResourceAsync("Vendors.ApplyAccount.IsAdmin"));
 
             //validate CAPTCHA
             if (_captchaSettings.Enabled && _captchaSettings.ShowOnApplyVendorPage && !captchaValid)
             {
-                ModelState.AddModelError("", _localizationService.GetResource("Common.WrongCaptchaMessage"));
+                ModelState.AddModelError("", await _localizationService.GetResourceAsync("Common.WrongCaptchaMessage"));
             }
 
             var pictureId = 0;
@@ -215,27 +220,33 @@ namespace Nop.Web.Controllers
             {
                 try
                 {
-                    var contentType = uploadedFile.ContentType;
-                    var vendorPictureBinary = _downloadService.GetDownloadBits(uploadedFile);
-                    var picture = _pictureService.InsertPicture(vendorPictureBinary, contentType, null);
+                    var contentType = uploadedFile.ContentType.ToLowerInvariant();
 
-                    if (picture != null)
-                        pictureId = picture.Id;
+                    if(!contentType.StartsWith("image/"))
+                        ModelState.AddModelError("", await _localizationService.GetResourceAsync("Vendors.ApplyAccount.Picture.ErrorMessage"));
+                    else
+                    {
+                        var vendorPictureBinary = await _downloadService.GetDownloadBitsAsync(uploadedFile);
+                        var picture = await _pictureService.InsertPictureAsync(vendorPictureBinary, contentType, null);
+
+                        if (picture != null)
+                            pictureId = picture.Id;
+                    }
                 }
                 catch (Exception)
                 {
-                    ModelState.AddModelError("", _localizationService.GetResource("Vendors.ApplyAccount.Picture.ErrorMessage"));
+                    ModelState.AddModelError("", await _localizationService.GetResourceAsync("Vendors.ApplyAccount.Picture.ErrorMessage"));
                 }
             }
 
             //vendor attributes
-            var vendorAttributesXml = ParseVendorAttributes(form);
-            _vendorAttributeParser.GetAttributeWarnings(vendorAttributesXml).ToList()
+            var vendorAttributesXml = await ParseVendorAttributesAsync(form);
+            (await _vendorAttributeParser.GetAttributeWarningsAsync(vendorAttributesXml)).ToList()
                 .ForEach(warning => ModelState.AddModelError(string.Empty, warning));
 
             if (ModelState.IsValid)
             {
-                var description = Core.Html.HtmlHelper.FormatText(model.Description, false, false, true, false, false, false);
+                var description = _htmlFormatter.FormatText(model.Description, false, false, true, false, false, false);
                 //disabled by default
                 var vendor = new Vendor
                 {
@@ -248,60 +259,59 @@ namespace Nop.Web.Controllers
                     PictureId = pictureId,
                     Description = description
                 };
-                _vendorService.InsertVendor(vendor);
+                await _vendorService.InsertVendorAsync(vendor);
                 //search engine name (the same as vendor name)
-                var seName = _urlRecordService.ValidateSeName(vendor, vendor.Name, vendor.Name, true);
-                _urlRecordService.SaveSlug(vendor, seName, 0);
+                var seName = await _urlRecordService.ValidateSeNameAsync(vendor, vendor.Name, vendor.Name, true);
+                await _urlRecordService.SaveSlugAsync(vendor, seName, 0);
 
                 //associate to the current customer
                 //but a store owner will have to manually add this customer role to "Vendors" role
                 //if he wants to grant access to admin area
-                _workContext.CurrentCustomer.VendorId = vendor.Id;
-                _customerService.UpdateCustomer(_workContext.CurrentCustomer);
+                customer.VendorId = vendor.Id;
+                await _customerService.UpdateCustomerAsync(customer);
 
                 //update picture seo file name
-                UpdatePictureSeoNames(vendor);
+                await UpdatePictureSeoNamesAsync(vendor);
 
                 //save vendor attributes
-                _genericAttributeService.SaveAttribute(vendor, NopVendorDefaults.VendorAttributes, vendorAttributesXml);
+                await _genericAttributeService.SaveAttributeAsync(vendor, NopVendorDefaults.VendorAttributes, vendorAttributesXml);
 
                 //notify store owner here (email)
-                _workflowMessageService.SendNewVendorAccountApplyStoreOwnerNotification(_workContext.CurrentCustomer,
+                await _workflowMessageService.SendNewVendorAccountApplyStoreOwnerNotificationAsync(customer,
                     vendor, _localizationSettings.DefaultAdminLanguageId);
 
                 model.DisableFormInput = true;
-                model.Result = _localizationService.GetResource("Vendors.ApplyAccount.Submitted");
+                model.Result = await _localizationService.GetResourceAsync("Vendors.ApplyAccount.Submitted");
                 return View(model);
             }
 
             //If we got this far, something failed, redisplay form
-            model = _vendorModelFactory.PrepareApplyVendorModel(model, false, true, vendorAttributesXml);
+            model = await _vendorModelFactory.PrepareApplyVendorModelAsync(model, false, true, vendorAttributesXml);
             return View(model);
         }
 
-        [HttpsRequirement]
-        public virtual IActionResult Info()
+        public virtual async Task<IActionResult> Info()
         {
-            if (!_customerService.IsRegistered(_workContext.CurrentCustomer))
+            if (!await _customerService.IsRegisteredAsync(await _workContext.GetCurrentCustomerAsync()))
                 return Challenge();
 
-            if (_workContext.CurrentVendor == null || !_vendorSettings.AllowVendorsToEditInfo)
+            if (await _workContext.GetCurrentVendorAsync() == null || !_vendorSettings.AllowVendorsToEditInfo)
                 return RedirectToRoute("CustomerInfo");
 
             var model = new VendorInfoModel();
-            model = _vendorModelFactory.PrepareVendorInfoModel(model, false);
+            model = await _vendorModelFactory.PrepareVendorInfoModelAsync(model, false);
             return View(model);
         }
 
         [HttpPost, ActionName("Info")]
-        [AutoValidateAntiforgeryToken]
         [FormValueRequired("save-info-button")]
-        public virtual IActionResult Info(VendorInfoModel model, IFormFile uploadedFile, IFormCollection form)
+        public virtual async Task<IActionResult> Info(VendorInfoModel model, IFormFile uploadedFile, IFormCollection form)
         {
-            if (!_customerService.IsRegistered(_workContext.CurrentCustomer))
+            if (!await _customerService.IsRegisteredAsync(await _workContext.GetCurrentCustomerAsync()))
                 return Challenge();
 
-            if (_workContext.CurrentVendor == null || !_vendorSettings.AllowVendorsToEditInfo)
+            var vendor = await _workContext.GetCurrentVendorAsync();
+            if (vendor == null || !_vendorSettings.AllowVendorsToEditInfo)
                 return RedirectToRoute("CustomerInfo");
 
             Picture picture = null;
@@ -310,27 +320,32 @@ namespace Nop.Web.Controllers
             {
                 try
                 {
-                    var contentType = uploadedFile.ContentType;
-                    var vendorPictureBinary = _downloadService.GetDownloadBits(uploadedFile);
-                    picture = _pictureService.InsertPicture(vendorPictureBinary, contentType, null);
+                    var contentType = uploadedFile.ContentType.ToLowerInvariant();
+
+                    if (!contentType.StartsWith("image/"))
+                        ModelState.AddModelError("", await _localizationService.GetResourceAsync("Account.VendorInfo.Picture.ErrorMessage"));
+                    else
+                    {
+                        var vendorPictureBinary = await _downloadService.GetDownloadBitsAsync(uploadedFile);
+                        picture = await _pictureService.InsertPictureAsync(vendorPictureBinary, contentType, null);
+                    }
                 }
                 catch (Exception)
                 {
-                    ModelState.AddModelError("", _localizationService.GetResource("Account.VendorInfo.Picture.ErrorMessage"));
+                    ModelState.AddModelError("", await _localizationService.GetResourceAsync("Account.VendorInfo.Picture.ErrorMessage"));
                 }
             }
 
-            var vendor = _workContext.CurrentVendor;
-            var prevPicture = _pictureService.GetPictureById(vendor.PictureId);
+            var prevPicture = await _pictureService.GetPictureByIdAsync(vendor.PictureId);
 
             //vendor attributes
-            var vendorAttributesXml = ParseVendorAttributes(form);
-            _vendorAttributeParser.GetAttributeWarnings(vendorAttributesXml).ToList()
+            var vendorAttributesXml = await ParseVendorAttributesAsync(form);
+            (await _vendorAttributeParser.GetAttributeWarningsAsync(vendorAttributesXml)).ToList()
                 .ForEach(warning => ModelState.AddModelError(string.Empty, warning));
 
             if (ModelState.IsValid)
             {
-                var description = Core.Html.HtmlHelper.FormatText(model.Description, false, false, true, false, false, false);
+                var description = _htmlFormatter.FormatText(model.Description, false, false, true, false, false, false);
 
                 vendor.Name = model.Name;
                 vendor.Email = model.Email;
@@ -341,52 +356,51 @@ namespace Nop.Web.Controllers
                     vendor.PictureId = picture.Id;
 
                     if (prevPicture != null)
-                        _pictureService.DeletePicture(prevPicture);
+                        await _pictureService.DeletePictureAsync(prevPicture);
                 }
 
                 //update picture seo file name
-                UpdatePictureSeoNames(vendor);
+                await UpdatePictureSeoNamesAsync(vendor);
 
-                _vendorService.UpdateVendor(vendor);
+                await _vendorService.UpdateVendorAsync(vendor);
 
                 //save vendor attributes
-                _genericAttributeService.SaveAttribute(vendor, NopVendorDefaults.VendorAttributes, vendorAttributesXml);
+                await _genericAttributeService.SaveAttributeAsync(vendor, NopVendorDefaults.VendorAttributes, vendorAttributesXml);
 
                 //notifications
                 if (_vendorSettings.NotifyStoreOwnerAboutVendorInformationChange)
-                    _workflowMessageService.SendVendorInformationChangeNotification(vendor, _localizationSettings.DefaultAdminLanguageId);
+                    await _workflowMessageService.SendVendorInformationChangeNotificationAsync(vendor, _localizationSettings.DefaultAdminLanguageId);
 
                 return RedirectToAction("Info");
             }
 
             //If we got this far, something failed, redisplay form
-            model = _vendorModelFactory.PrepareVendorInfoModel(model, true, vendorAttributesXml);
+            model = await _vendorModelFactory.PrepareVendorInfoModelAsync(model, true, vendorAttributesXml);
             return View(model);
         }
 
         [HttpPost, ActionName("Info")]
-        [AutoValidateAntiforgeryToken]
         [FormValueRequired("remove-picture")]
-        public virtual IActionResult RemovePicture()
+        public virtual async Task<IActionResult> RemovePicture()
         {
-            if (!_customerService.IsRegistered(_workContext.CurrentCustomer))
+            if (!await _customerService.IsRegisteredAsync(await _workContext.GetCurrentCustomerAsync()))
                 return Challenge();
 
-            if (_workContext.CurrentVendor == null || !_vendorSettings.AllowVendorsToEditInfo)
+            var vendor = await _workContext.GetCurrentVendorAsync();
+            if (vendor == null || !_vendorSettings.AllowVendorsToEditInfo)
                 return RedirectToRoute("CustomerInfo");
 
-            var vendor = _workContext.CurrentVendor;
-            var picture = _pictureService.GetPictureById(vendor.PictureId);
+            var picture = await _pictureService.GetPictureByIdAsync(vendor.PictureId);
 
             if (picture != null)
-                _pictureService.DeletePicture(picture);
+                await _pictureService.DeletePictureAsync(picture);
 
             vendor.PictureId = 0;
-            _vendorService.UpdateVendor(vendor);
+            await _vendorService.UpdateVendorAsync(vendor);
 
             //notifications
             if (_vendorSettings.NotifyStoreOwnerAboutVendorInformationChange)
-                _workflowMessageService.SendVendorInformationChangeNotification(vendor, _localizationSettings.DefaultAdminLanguageId);
+                await _workflowMessageService.SendVendorInformationChangeNotificationAsync(vendor, _localizationSettings.DefaultAdminLanguageId);
 
             return RedirectToAction("Info");
         }

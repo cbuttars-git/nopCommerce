@@ -3,7 +3,7 @@ using Nop.Web.Framework.Models;
 
 namespace Nop.Web.Models.Common
 {
-    public partial class FooterModel : BaseNopModel
+    public partial record FooterModel : BaseNopModel
     {
         public FooterModel()
         {
@@ -11,9 +11,11 @@ namespace Nop.Web.Models.Common
         }
 
         public string StoreName { get; set; }
+        public bool IsHomePage { get; set; }
         public bool WishlistEnabled { get; set; }
         public bool ShoppingCartEnabled { get; set; }
         public bool SitemapEnabled { get; set; }
+        public bool SearchEnabled { get; set; }
         public bool NewsEnabled { get; set; }
         public bool BlogEnabled { get; set; }
         public bool CompareProductsEnabled { get; set; }
@@ -47,7 +49,7 @@ namespace Nop.Web.Models.Common
 
         #region Nested classes
 
-        public class FooterTopicModel : BaseNopEntityModel
+        public record FooterTopicModel : BaseNopEntityModel
         {
             public string Name { get; set; }
             public string SeName { get; set; }

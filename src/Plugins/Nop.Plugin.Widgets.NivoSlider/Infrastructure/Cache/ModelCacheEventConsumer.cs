@@ -1,4 +1,5 @@
-﻿using Nop.Core.Caching;
+﻿using System.Threading.Tasks;
+using Nop.Core.Caching;
 using Nop.Core.Domain.Configuration;
 using Nop.Core.Events;
 using Nop.Services.Events;
@@ -20,7 +21,7 @@ namespace Nop.Plugin.Widgets.NivoSlider.Infrastructure.Cache
         /// {0} : picture id
         /// {1} : connection type (http/https)
         /// </remarks>
-        public static CacheKey PICTURE_URL_MODEL_KEY = new CacheKey("Nop.plugins.widgets.nivoslider.pictureurl-{0}-{1}", PICTURE_URL_PATTERN_KEY);
+        public static CacheKey PICTURE_URL_MODEL_KEY = new("Nop.plugins.widgets.nivoslider.pictureurl-{0}-{1}", PICTURE_URL_PATTERN_KEY);
         public const string PICTURE_URL_PATTERN_KEY = "Nop.plugins.widgets.nivoslider";
 
         private readonly IStaticCacheManager _staticCacheManager;
@@ -30,17 +31,20 @@ namespace Nop.Plugin.Widgets.NivoSlider.Infrastructure.Cache
             _staticCacheManager = staticCacheManager;
         }
 
-        public void HandleEvent(EntityInsertedEvent<Setting> eventMessage)
+        /// <returns>A task that represents the asynchronous operation</returns>
+        public async Task HandleEventAsync(EntityInsertedEvent<Setting> eventMessage)
         {
-            _staticCacheManager.RemoveByPrefix(PICTURE_URL_PATTERN_KEY);
+            await _staticCacheManager.RemoveByPrefixAsync(PICTURE_URL_PATTERN_KEY);
         }
-        public void HandleEvent(EntityUpdatedEvent<Setting> eventMessage)
+        /// <returns>A task that represents the asynchronous operation</returns>
+        public async Task HandleEventAsync(EntityUpdatedEvent<Setting> eventMessage)
         {
-            _staticCacheManager.RemoveByPrefix(PICTURE_URL_PATTERN_KEY);
+            await _staticCacheManager.RemoveByPrefixAsync(PICTURE_URL_PATTERN_KEY);
         }
-        public void HandleEvent(EntityDeletedEvent<Setting> eventMessage)
+        /// <returns>A task that represents the asynchronous operation</returns>
+        public async Task HandleEventAsync(EntityDeletedEvent<Setting> eventMessage)
         {
-            _staticCacheManager.RemoveByPrefix(PICTURE_URL_PATTERN_KEY);
+            await _staticCacheManager.RemoveByPrefixAsync(PICTURE_URL_PATTERN_KEY);
         }
     }
 }

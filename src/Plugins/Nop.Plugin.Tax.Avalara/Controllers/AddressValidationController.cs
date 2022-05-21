@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
 using Nop.Core;
 using Nop.Core.Domain.Tax;
 using Nop.Services.Common;
@@ -7,6 +8,7 @@ using Nop.Web.Framework.Controllers;
 
 namespace Nop.Plugin.Tax.Avalara.Controllers
 {
+    [AutoValidateAntiforgeryToken]
     public class AddressValidationController : BaseController
     {
         #region Fields
@@ -36,23 +38,22 @@ namespace Nop.Plugin.Tax.Avalara.Controllers
         #region Methods
 
         [HttpPost]
-        [IgnoreAntiforgeryToken]
-        public IActionResult UseValidatedAddress(int addressId, bool isNewAddress)
+        public async Task<IActionResult> UseValidatedAddress(int addressId, bool isNewAddress)
         {
             //try to get an address by the passed identifier
-            var address = _addressService.GetAddressById(addressId);
+            var address = await _addressService.GetAddressByIdAsync(addressId);
             if (address != null)
             {
+                var customer = await _workContext.GetCurrentCustomerAsync();
                 //add address to customer collection if it's a new
-                if (isNewAddress)
-                    _customerService.InsertCustomerAddress(_workContext.CurrentCustomer, address);
+                if (isNewAddress) await _customerService.InsertCustomerAddressAsync(customer, address);
 
                 //and update appropriate customer address
                 if (_taxSettings.TaxBasedOn == TaxBasedOn.BillingAddress)
-                    _workContext.CurrentCustomer.BillingAddressId = address.Id;
+                    (customer).BillingAddressId = address.Id;
                 if (_taxSettings.TaxBasedOn == TaxBasedOn.ShippingAddress)
-                    _workContext.CurrentCustomer.ShippingAddressId = address.Id;
-                _customerService.UpdateCustomer(_workContext.CurrentCustomer);
+                    (customer).ShippingAddressId = address.Id;
+                await _customerService.UpdateCustomerAsync(customer);
             }
 
             //nothing to return

@@ -1,11 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using ClosedXML.Excel;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Core.Domain.Catalog;
-using OfficeOpenXml;
-using OfficeOpenXml.Style;
 
 namespace Nop.Services.ExportImport.Help
 {
@@ -45,36 +46,27 @@ namespace Nop.Services.ExportImport.Help
         }
 
         /// <summary>
-        /// Add new property
-        /// </summary>
-        /// <param name="property">Property to add</param>
-        public void AddProperty(PropertyByName<T> property)
-        {
-            if (_properties.ContainsKey(property.PropertyName))
-                return;
-            
-            _properties.Add(property.PropertyName, property);
-        }
-
-        /// <summary>
         /// Export objects to XLSX
         /// </summary>
         /// <typeparam name="T">Type of object</typeparam>
         /// <param name="itemsToExport">The objects to export</param>
-        /// <returns></returns>
-        public virtual byte[] ExportToXlsx(IEnumerable<T> itemsToExport)
+        /// <returns>
+        /// A task that represents the asynchronous operation
+        /// The task result contains the 
+        /// </returns>
+        public virtual async Task<byte[]> ExportToXlsxAsync(IEnumerable<T> itemsToExport)
         {
-            using var stream = new MemoryStream();
+            await using var stream = new MemoryStream();
             // ok, we can run the real code of the sample now
-            using (var xlPackage = new ExcelPackage(stream))
+            using (var workbook = new XLWorkbook())
             {
                 // uncomment this line if you want the XML written out to the outputDir
                 //xlPackage.DebugMode = true; 
 
                 // get handles to the worksheets
-                var worksheet = xlPackage.Workbook.Worksheets.Add(typeof(T).Name);
-                var fWorksheet = xlPackage.Workbook.Worksheets.Add("DataForFilters");
-                fWorksheet.Hidden = eWorkSheetHidden.VeryHidden;
+                var worksheet = workbook.Worksheets.Add(typeof(T).Name);
+                var fWorksheet = workbook.Worksheets.Add("DataForFilters");
+                fWorksheet.Visibility = XLWorksheetVisibility.VeryHidden;
 
                 //create Headers and format them 
                 WriteCaption(worksheet);
@@ -83,10 +75,10 @@ namespace Nop.Services.ExportImport.Help
                 foreach (var items in itemsToExport)
                 {
                     CurrentObject = items;
-                    WriteToXlsx(worksheet, row++, fWorksheet: fWorksheet);
+                    await WriteToXlsxAsync(worksheet, row++, fWorksheet: fWorksheet);
                 }
 
-                xlPackage.Save();
+                workbook.SaveAs(stream);
             }
 
             CurrentObject = default;
@@ -112,15 +104,6 @@ namespace Nop.Services.ExportImport.Help
         }
 
         /// <summary>
-        /// Access object by property name
-        /// </summary>
-        /// <param name="propertyName">Property name</param>
-        /// <returns>Property value</returns>
-        public object this[string propertyName] => _properties.ContainsKey(propertyName) && CurrentObject != null
-            ? _properties[propertyName].GetProperty(CurrentObject)
-            : null;
-
-        /// <summary>
         /// Remove object by property name
         /// </summary>
         /// <param name="propertyName">Property name</param>
@@ -136,14 +119,17 @@ namespace Nop.Services.ExportImport.Help
         /// <param name="row">Row index</param>
         /// <param name="cellOffset">Cell offset</param>
         /// <param name="fWorksheet">Filters worksheet</param>
-        public virtual void WriteToXlsx(ExcelWorksheet worksheet, int row, int cellOffset = 0, ExcelWorksheet fWorksheet = null)
+        /// <returns>A task that represents the asynchronous operation</returns>
+        public virtual async Task WriteToXlsxAsync(IXLWorksheet worksheet, int row, int cellOffset = 0, IXLWorksheet fWorksheet = null)
         {
             if (CurrentObject == null)
                 return;
-            
+
+            var xlRrow = worksheet.Row(row);
+            xlRrow.Style.Alignment.WrapText = false;
             foreach (var prop in _properties.Values)
             {
-                var cell = worksheet.Cells[row, prop.PropertyOrderPosition + cellOffset];
+                var cell = xlRrow.Cell(prop.PropertyOrderPosition + cellOffset);
                 if (prop.IsDropDownCell && _catalogSettings.ExportImportRelatedEntitiesByName)
                 {
                     var dropDownElements = prop.GetDropDownElements();
@@ -153,14 +139,15 @@ namespace Nop.Services.ExportImport.Help
                         continue;
                     }
 
-                    cell.Value = prop.GetItemText(prop.GetProperty(CurrentObject));
+                    cell.Value = prop.GetItemText(await prop.GetProperty(CurrentObject));
 
                     if (!UseDropdownLists)
                         continue;
 
-                    var validator = cell.DataValidation.AddListDataValidation();
-                    
-                    validator.AllowBlank = prop.AllowBlank;
+                    var validator = cell.DataValidation;
+                    validator.InCellDropdown = true;
+
+                    validator.IgnoreBlanks = prop.AllowBlank;
 
                     if (fWorksheet == null)
                         continue;
@@ -168,37 +155,58 @@ namespace Nop.Services.ExportImport.Help
                     var fRow = 1;
                     foreach (var dropDownElement in dropDownElements)
                     {
-                        var fCell = fWorksheet.Cells[fRow++, prop.PropertyOrderPosition];
+                        var fCell = fWorksheet.Row(fRow++).Cell(prop.PropertyOrderPosition);
 
                         if (fCell.Value != null && fCell.Value.ToString() == dropDownElement)
                             break;
-                        
+
                         fCell.Value = dropDownElement;
                     }
 
-                    validator.Formula.ExcelFormula = $"{fWorksheet.Name}!{fWorksheet.Cells[1, prop.PropertyOrderPosition].Address}:{fWorksheet.Cells[dropDownElements.Length, prop.PropertyOrderPosition].Address}";
+                    validator.List(fWorksheet.Range(1, prop.PropertyOrderPosition, dropDownElements.Length, prop.PropertyOrderPosition), true);
                 }
                 else
                 {
-                    cell.Value = prop.GetProperty(CurrentObject);
+                    var value = await prop.GetProperty(CurrentObject);
+                    if (value is string stringValue)
+                    {
+                        cell.SetValue(stringValue);
+                    }
+                    else if (value is char charValue)
+                    {
+                        cell.SetValue(charValue);
+                    }
+                    else if (value is Guid guidValue)
+                    {
+                        cell.SetValue(guidValue);
+                    }
+                    else if (value is Enum enumValue)
+                    {
+                        cell.SetValue(enumValue);
+                    }
+                    else
+                    {
+                        cell.Value = value;
+                    }
                 }
+                cell.Style.Alignment.WrapText = false;
             }
         }
-        
+
         /// <summary>
         /// Read object data from XLSX worksheet
         /// </summary>
         /// <param name="worksheet">worksheet</param>
         /// <param name="row">Row index</param>
         /// /// <param name="cellOffset">Cell offset</param>
-        public virtual void ReadFromXlsx(ExcelWorksheet worksheet, int row, int cellOffset = 0)
+        public virtual void ReadFromXlsx(IXLWorksheet worksheet, int row, int cellOffset = 0)
         {
-            if (worksheet?.Cells == null)
+            if (worksheet?.Cells() == null)
                 return;
 
             foreach (var prop in _properties.Values)
             {
-                prop.PropertyValue = worksheet.Cells[row, prop.PropertyOrderPosition + cellOffset].Value;
+                prop.PropertyValue = worksheet.Row(row).Cell(prop.PropertyOrderPosition + cellOffset).Value;
             }
         }
 
@@ -208,15 +216,14 @@ namespace Nop.Services.ExportImport.Help
         /// <param name="worksheet">worksheet</param>
         /// <param name="row">Row number</param>
         /// <param name="cellOffset">Cell offset</param>
-        public virtual void WriteCaption(ExcelWorksheet worksheet, int row = 1, int cellOffset = 0)
+        public virtual void WriteCaption(IXLWorksheet worksheet, int row = 1, int cellOffset = 0)
         {
             foreach (var caption in _properties.Values)
             {
-                var cell = worksheet.Cells[row, caption.PropertyOrderPosition + cellOffset];
+                var cell = worksheet.Row(row).Cell(caption.PropertyOrderPosition + cellOffset);
                 cell.Value = caption;
 
                 SetCaptionStyle(cell);
-                cell.Style.Hidden = false;
             }
         }
 
@@ -224,10 +231,10 @@ namespace Nop.Services.ExportImport.Help
         /// Set caption style to excel cell
         /// </summary>
         /// <param name="cell">Excel cell</param>
-        public void SetCaptionStyle(ExcelRange cell)
+        public void SetCaptionStyle(IXLCell cell)
         {
-            cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
-            cell.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(184, 204, 228));
+            cell.Style.Fill.PatternType = XLFillPatternValues.Solid;
+            cell.Style.Fill.BackgroundColor = XLColor.FromColor(Color.FromArgb(184, 204, 228));
             cell.Style.Font.Bold = true;
         }
 
